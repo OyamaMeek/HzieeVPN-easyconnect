@@ -150,6 +150,8 @@
   - 当前 SSH 示例明确说明地址占位符，代理记录不保存真实 VPS 地址；更新当前开发记录中的提交哈希。
   - 本地完整恢复备份校验通过，权限 600，存放于被忽略的工作目录；没有上传备份或替换规则。
   - 原地址检查清理前失败、清理后通过；完整 master 历史与当前跟踪文件无原地址，代码与配置对比无差异。
+  - 使用绑定预期旧哈希的 --force-with-lease 更新 origin/master 成功；从 GitHub 新克隆的完整分支历史检查通过。
+  - 旧提交原始文件链接实测仍返回 HTTP 200 且含原地址；GitHub 旧对象缓存尚未清理，申请稿保存在已忽略的本地工作目录，未向外发送。
   - 本次未运行 Docker 容器或修改服务器；新用户首次部署全过程尚未验证，已有克隆与 GitHub 旧对象缓存不在本地清理控制范围内。
 
 - **涉及文件**：
@@ -157,6 +159,6 @@
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`
   - `docs/CHANGELOG.md`
 
-- **Git 提交**：待提交；本地脱敏与验证已完成，待保存说明并更新远端。
+- **Git 提交**：`713a61d73613e3cf81c66b35d435be62cf8a69e8 fix: redact private VPS address from public history`，已按用户授权更新 origin/master；本记录通过后续文档提交补记。
 
 ---
