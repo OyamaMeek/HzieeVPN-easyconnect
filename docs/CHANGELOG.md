@@ -181,6 +181,6 @@
   - `doc/`、`docker-compose.yml`、`macos_example.sh`、`pkg_version.xml`。
   - `.dockerignore`、`README.md`、`memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`、`docs/CHANGELOG.md`。
 
-- **Git 提交**：待提交。
+- **Git 提交**：`c9f4984847ee8321c62ad1d8cd1a648c55d0ff71 fix: restore complete Docker image build sources`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---
