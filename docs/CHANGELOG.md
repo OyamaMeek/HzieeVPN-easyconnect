@@ -246,6 +246,6 @@
   - `deploy/hziee/README.md`、`memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`、`docs/CHANGELOG.md`。
   - 远程部署文件位于 `/opt/hziee-headless`，私密配置和登录日志仅保留在服务器，未纳入 Git。
 
-- **Git 提交**：待提交部署检查记录；服务启用仍受节点网络连通性阻碍。
+- **Git 提交**：`5dc23e8 docs: record HK-AK deployment checks and node connectivity blocker`，已普通推送至 origin/master；本记录通过后续文档提交补记。服务启用仍受节点网络连通性阻碍。
 
 ---
