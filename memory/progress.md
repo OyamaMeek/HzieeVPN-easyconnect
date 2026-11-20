@@ -10,7 +10,7 @@
 - [x] 日志确认用户验证码重试后，于本地时间 21:52:01 获取并解析学校 clientResource，21:52:08 报 `VPN client setup error: no reachable node for ip request`；未出现 `VPN client started`，独立数据目录只有验证码图片，没有保存会话。
 - [x] 最终 docker ps -a 只显示旧容器 `hziee-vpn-atrust-1` 为 Up 3 hours；官方一次性容器已退出，测试端口 11081/18889 和网页 18081 均已释放，旧容器未停止，原配置与 Compose 未改动。
 - 官方和自建镜像在 HK-AK 均于节点探测阶段失败；此次未建立隧道，因此没有执行官方客户端的 HTTP/SOCKS5 校内请求与 60 秒保活检查，具体网络过滤或路由原因仍未确定。
-- [ ] 更新实际结果、开发记录并提交推送。
+- [x] 实际结果和开发记录已随 `57934be` 提交并普通推送至 origin/master。
 
 ## 英国服务器网络对照（2026-11-20）
 

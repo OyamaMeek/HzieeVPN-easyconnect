@@ -299,6 +299,6 @@
   - `memory/plan.md`、`memory/verify.md`、`memory/progress.md`、`memory/gotchas.md`、`docs/CHANGELOG.md`。
   - 远程私密日志为 `/opt/hziee-headless/upstream-login.log`，测试数据位于同目录的 `upstream-test-data/`，未纳入 Git。
 
-- **Git 提交**：待提交官方客户端对照登录记录。
+- **Git 提交**：`57934be docs: record official ZJU-Connect login failure on HK`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---
