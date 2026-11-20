@@ -74,3 +74,24 @@
 - **Git 提交**：`a279dddcfaff2272749abe76aa221e88208cf4fb docs: record successful headless VPN runtime tests`，已普通推送到 origin/master。
 
 ---
+
+## [2026-11-20 14:37] 项目与 GitHub 仓库改名
+
+- **需求/问题描述**：
+  > 将项目名称改为 HzieeVPN-easyconnect，同时修改 GitHub 仓库名称。
+
+- **实际实现的功能与改动**：
+  - 更新 README 标题、开发文档中的项目名称和四处构建示例的 clone、cd 命令。
+  - GitHub 仓库改为 `OyamaMeek/HzieeVPN-easyconnect`；API 已核对改名前后仓库 ID 均为 1464974211。
+  - 保留上游镜像、历史来源链接、Compose 项目名、部署数据与本地工作目录。
+  - origin 已更新；项目名称、四处 clone/cd 示例、origin 与仅文档变更断言通过，`git diff --check` 和新地址 `git ls-remote` 成功。
+  - 仅涉及名称与文档，未重新运行 VPN 或 Docker 容器。
+
+- **涉及文件**：
+  - `README.md`、`doc/development.md`、`doc/build.md`
+  - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`
+  - `docs/CHANGELOG.md`
+
+- **Git 提交**：待提交。
+
+---

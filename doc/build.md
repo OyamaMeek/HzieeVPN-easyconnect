@@ -47,8 +47,8 @@
 ### 纯命令行
 
 ``` bash
-git clone https://github.com/hagb/docker-easyconnect.git
-cd docker-easyconnect
+git clone https://github.com/OyamaMeek/HzieeVPN-easyconnect.git
+cd HzieeVPN-easyconnect
 docker image build -f Dockerfile.build -t hagb/docker-easyconnect:build --build-arg EC_HOST=amd64 .
 docker image build --tag hagb/docker-easyconnect -f Dockerfile.cli --build-arg EC_HOST=amd64 .
 ```
@@ -56,8 +56,8 @@ docker image build --tag hagb/docker-easyconnect -f Dockerfile.cli --build-arg E
 ### 带 VNC 服务端
 
 ``` bash
-git clone https://github.com/hagb/docker-easyconnect.git
-cd docker-easyconnect
+git clone https://github.com/OyamaMeek/HzieeVPN-easyconnect.git
+cd HzieeVPN-easyconnect
 docker image build $(cat build-args/7.6.7-amd64.txt) -f Dockerfile.build -t hagb/docker-easyconnect:build .
 docker image build $(cat build-args/7.6.7-amd64.txt) --tag hagb/docker-easyconnect -f Dockerfile .
 ```
@@ -65,8 +65,8 @@ docker image build $(cat build-args/7.6.7-amd64.txt) --tag hagb/docker-easyconne
 ### 使用 X11 socket 而无 VNC 服务端
 
 ``` bash
-git clone https://github.com/hagb/docker-easyconnect.git
-cd docker-easyconnect
+git clone https://github.com/OyamaMeek/HzieeVPN-easyconnect.git
+cd HzieeVPN-easyconnect
 docker image build $(cat build-args/7.6.7-amd64.txt) -f Dockerfile.build -t hagb/docker-easyconnect:build .
 docker image build $(cat build-args/7.6.7-amd64.txt) --tag hagb/docker-easyconnect -f Dockerfile.vncless .
 ```
@@ -76,8 +76,8 @@ docker image build $(cat build-args/7.6.7-amd64.txt) --tag hagb/docker-easyconne
 (使用本机代理，以 aTrust 为例)
 
 ```bash
-git clone https://github.com/hagb/docker-easyconnect.git
-cd docker-easyconnect
+git clone https://github.com/OyamaMeek/HzieeVPN-easyconnect.git
+cd HzieeVPN-easyconnect
 docker image build --network host $(cat build-args/atrust-arm64.txt) --build-arg http_proxy=${http_proxy} --build-arg https_proxy=${https_proxy} --build-arg MIRROR_URL="http://mirrors.ustc.edu.cn/debian/" -f Dockerfile.build -t hagb/docker-easyconnect:build .
 docker image build --network host $(cat build-args/atrust-arm64.txt) --build-arg http_proxy=${http_proxy} --build-arg https_proxy=${https_proxy} --build-arg CHROMIUM=1 --build-arg MIRROR_URL="http://mirrors.ustc.edu.cn/debian/" -f Dockerfile -t hagb/docker-atrust:chromium .
 ```

@@ -1,5 +1,16 @@
 # 验证标准
 
+## 项目改名检查
+
+- README 与开发文档使用 `HzieeVPN-easyconnect`，构建示例的 clone 和 cd 路径保持一致。
+- GitHub 改名前后仓库 ID 相同，返回名称与目标名称完全一致，origin 指向新地址。
+- 镜像、应用脚本、Compose 配置及凭据不作修改；运行 `git diff --check`。
+- 只暂存本次文档与持久记录，提交后普通推送，核对远端 master 与本地 HEAD。
+
+已通过：项目名称与四处 clone/cd 示例断言、origin 地址断言、仅修改 Markdown 文件的检查、`git diff --check`；新地址 `git ls-remote` 成功。GitHub API 核对改名前后仓库 ID 均为 1464974211。
+
+## 服务器部署
+
 - Docker 正常运行，TUN 设备存在，现有服务不被替换。
 - 部署配置通过 docker compose config；容器正常运行，无持续重启。
 - noVNC 可访问，代理端口正常；所有新增宿主机端口仅监听 127.0.0.1。

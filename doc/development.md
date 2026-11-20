@@ -3,7 +3,7 @@
 ## 项目结构一览
 
 ```
-docker-easyconnect
+HzieeVPN-easyconnect
 ├─ build-args: 各个版本、架构的编译参数
 │  └─ ...
 ├─ build-scripts:  构建镜像过程中被 Dockerfile 调用的脚本

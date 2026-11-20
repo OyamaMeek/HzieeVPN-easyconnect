@@ -1,4 +1,4 @@
-# docker-easyconnect
+# HzieeVPN-easyconnect
 
 让深信服开发的**非自由**的 VPN 软件 EasyConnect 或 aTrust 运行在 docker 中，提供 [socks5 和 http 代理](doc/usage.md#代理服务)服务和[网关](doc/usage.md#ip-forward)供宿主机连接使用。
 
