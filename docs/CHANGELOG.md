@@ -21,6 +21,6 @@
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`
   - `docs/CHANGELOG.md`
 
-- **Git 提交**：待提交。
+- **Git 提交**：`98399010f24f1a7a6de1a680312c7a9995f50a95 feat: add private HZIEE aTrust deployment`，已普通推送到 origin/master。
 
 ---
