@@ -1,0 +1,27 @@
+services:
+  atrust:
+    image: hagb/docker-atrust@sha256:978d613b9d863a80ebaf9ea3e9cf75f2c8dfc39cadd28cac41f865a1a0eed5ca
+    restart: unless-stopped
+    devices:
+      - /dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    sysctls:
+      net.ipv4.conf.default.route_localnet: "1"
+    volumes:
+      - ./data:/root
+    environment:
+      PASSWORD: ${VNC_PASSWORD:?Set VNC_PASSWORD in .env (max 8 characters)}
+      URLWIN: "1"
+      USE_NOVNC: "1"
+    ports:
+      - "127.0.0.1:5901:5901"
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:1080:1080"
+      - "127.0.0.1:8888:8888"
+      - "127.0.0.1:54631:54631"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
