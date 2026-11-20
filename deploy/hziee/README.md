@@ -74,6 +74,14 @@ docker compose -f compose.yaml up -d atrust
 
 ## 登录
 
+首次部署图形版时，在本目录的 `.env` 中设置 `VNC_PASSWORD`（最多 8 个字符）；已有配置保留原密码。若无图形版正在运行，先停止它以释放代理端口，再执行：
+
+```bash
+chmod 600 .env
+docker compose -f compose.yaml config --quiet
+docker compose -f compose.yaml up -d atrust
+```
+
 Termius 中已创建并启动以下本地转发规则，均仅绑定本机 127.0.0.1：
 
 | 规则 | 本机端口 | HK-AK 目标 |
@@ -119,33 +127,8 @@ docker compose restart
 
 图形版配置也已设置 `PING_ADDR_URL=http://10.130.10.75/`、`PING_INTERVAL=60`，复用现有 HTTP 探测。每轮等待 60 秒后探测，单次最多 10 秒。将本次更新后的 `compose.yaml` 放入部署目录，再运行 `docker compose up -d atrust` 才会应用新的环境变量；`restart` 不会应用配置变更。
 
-## 验证记录
+## 验证范围
 
-2026-11-20（Asia/Taipei）：
+2026-11-20 已完成服务器图形版扫码登录，以及本机原生客户端的真实密码登录、代理访问、会话恢复和 60 秒保活验证。详细过程保存在 `memory/verify.md` 和 `docs/CHANGELOG.md`。
 
-- 已安装 Docker 26.1.5 和 Compose 2.26.1，Docker 服务 active。
-- 学校入口从服务器请求返回 HTTP 200。
-- `docker compose config --quiet` 成功，拉取和启动退出码 0。
-- 容器 running，重启次数 0，OOMKilled=false。
-- 5 个映射端口均只监听 127.0.0.1。
-- noVNC 从服务器和本机 SSH 隧道均可访问，已由用户完成钉钉扫码，界面显示学校工作台。
-- utun7 已分配 IPv4 地址，学校下发的内网路由已存在。
-- 本机分别通过两个代理访问学校入口，均返回 HTTP 302，curl 退出码 0。
-- 登录后容器检查时使用约 532 MiB 内存，服务器剩余磁盘约 2.2 GB。
-- 启动日志存在 D-Bus、aTrustShell.conf 权限和 bsod_checker.js 异常；本次已完成认证及 VPN 接口建立，长期稳定性未验证。
-- 具体校内业务系统尚未验证；对一条已下发路由中的 IP 发起 HTTP 请求未取得有效响应。
-- 终端二维码输出未完成；本次扫码在图形界面完成。
-
-本次项目配置检查：
-
-- 两份 Compose 均通过 Docker Compose 5.8.0 的 `config --quiet`；图形版校验使用临时环境值，仅验证配置展开，未启动容器。
-- 配置断言、原启动脚本 `bash -n` 和 `git diff --check` 通过；凭据、会话和验证工具均被 Git 忽略。
-- Docker Hub 确认 `mythologyli/zju-connect:1.3.1` 的 Linux amd64、arm64 镜像存在。
-- ZJU-Connect 1.3.1 成功解析 `headless.toml.example`，并通过 `-auth-info` 实际查询学校服务器，退出码 0；“上网账号(I-XG)”返回 `loginDomain=ShenLan`、`authType=auth/psw`。
-- 本机通过现有 HTTP 18888 代理访问 `http://10.130.10.75/`，10 秒无响应，curl 退出码 28。
-- 本地真实账号测试：学校服务器要求点选图形验证码，完成后密码认证成功，客户端启动；没有要求短信验证码。
-- HTTP 8888 和 SOCKS5 1080 均仅监听 127.0.0.1；通过两者访问目标网址均返回 HTTP 200，响应体各 7624 字节。
-- 结束客户端后读取同一会话文件重启，日志显示 `Already logged in`，没有再次要求图形验证码；会话恢复后的首次保活返回 HTTP 200。
-- 实际保活日志：13:35:35、13:36:35 均返回 HTTP 200，间隔 60 秒；测试进程已结束，本机测试代理端口已释放。
-- 真实配置和测试会话文件权限为 600；测试数据保存在已忽略的 `.agent/work/login-test/`，不提交账号、密码或会话。
-- 本机未安装 Docker 引擎，容器启动及 HK-AK 迁移尚未验证。
+本次精简仅修改仓库文件，两份 Compose 和学校参数保持不变。本机缺少 Docker 引擎，未重新运行容器、切换服务器或验证长期稳定性。

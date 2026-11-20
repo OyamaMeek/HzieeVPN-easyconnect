@@ -1,5 +1,15 @@
 # 验证标准
 
+## 学校专用精简检查（2026-11-20）
+
+- 清理前保存两份 Compose 的真实解析结果，清理后比较完整 JSON，确认服务配置不变。
+- 校验 TOML 示例的 aTrust、学校域名、auth/psw、ShenLan 与 HTTP 保活地址。
+- 校验代理仅绑定 127.0.0.1、挂载路径与会话持久化、自动重启和日志轮换；真实配置及数据仍被忽略。
+- 校验无通用启动入口或构建工作流，最终使用文档不引用已删除文件，`git diff --check` 通过。
+- 本机没有 Docker 引擎，容器启动与学校登录不属于本次配置解析验证的通过范围。
+
+已执行：`python3 .agent/work/school-cleanup/check.py`，清理前 4 项中 2 项因通用启动入口与首页内容失败，清理后 4 项全部通过。检查实际调用 Docker Compose 5.8.0 并比较前后完整 JSON，解析真实 TOML 示例，核对本机端口与凭据忽略规则。三份配置的 SHA-256 校验均通过，`git diff --check` 通过。检查脚本与无凭据基线保存在已忽略的 `.agent/work/school-cleanup/`；未新增生产脚本或依赖。
+
 ## 项目改名检查
 
 - README 与开发文档使用 `HzieeVPN-easyconnect`，构建示例的 clone 和 cd 路径保持一致。

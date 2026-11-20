@@ -1,94 +1,52 @@
 # HzieeVPN-easyconnect
 
-让深信服开发的**非自由**的 VPN 软件 EasyConnect 或 aTrust 运行在 docker 中，提供 [socks5 和 http 代理](doc/usage.md#代理服务)服务和[网关](doc/usage.md#ip-forward)供宿主机连接使用。
+杭州电子科技大学信息工程学院的 aTrust VPN 部署配置。学校入口：<https://vpn.hziee.edu.cn>。
 
-本项目基于 EasyConnect 官方“Linux”版的 deb 包、[@shmille](https://github.com/shmilee) 提供的[命令行版客户端 deb 包](https://github.com/shmilee/scripts/releases/download/v0.0.1/easyconn_7.6.8.2-ubuntu_amd64.deb)、aTrust 官方“Linux”版 deb 包，这些 deb 包的版权归深信服（Sangfor）所有，请不要滥用本项目。本项目**不是**深信服官方项目。
+| 登录方式 | 配置 | 用途 |
+| --- | --- | --- |
+| 上网账号密码 | `deploy/hziee/compose.headless.yaml` | 使用 ZJU-Connect，无需图形界面 |
+| 钉钉扫码 | `deploy/hziee/compose.yaml` | 使用 aTrust，通过 noVNC 登录 |
 
-**招募项目维护者，有兴趣可在 [#275](https://github.com/docker-easyconnect/docker-easyconnect/issues/275) 下回复。**
+两种方式共用代理端口，同一主机上只运行一套。详细登录、切换与服务器运维见[部署说明](deploy/hziee/README.md)。
 
-欢迎批评、指正，提交 issue、PR，包括但不仅限于 bug、各种疑问、代码和文档的改进。
+## 账号密码登录
 
-详细用法见于 [doc/usage.md](doc/usage.md)，常见问题见于 [doc/faq.md](doc/faq.md)，自行构建可参照构建说明 [doc/build.md](doc/build.md)。
+准备好 Docker 和 Docker Compose，在项目目录执行；已有配置文件时保留原文件：
 
-## 简明使用步骤
-
-使用下述方式登录后，可以通过 `127.0.0.1:1080`、`127.0.0.1:8888` 分别访问 [socks5 和 http 代理](doc/usage.md#代理服务)。
-
-### 纯命令行版 EasyConnect（amd64 架构）
-
-注意，纯命令行版本仅支持下列登录方式：用户名+密码、硬件特征码。
-
-1. [安装Docker并运行](https://docs.docker.com/get-docker/)；
-2.  在终端输入：
-	``` bash
-	docker run --rm --device /dev/net/tun --cap-add NET_ADMIN -ti -p 127.0.0.1:1080:1080 -p 127.0.0.1:8888:8888 -e EC_VER=7.6.3 -e CLI_OPTS="-d vpnaddress -u username -p password" hagb/docker-easyconnect:cli
-	```
-	其中 `-e EC_VER=7.6.7` 表示使用 `7.6.7` 版本的 EasyConnect，请根据实际情况修改版本号（选择 `7.6.7` 或 `7.6.3`，详见 [EasyConnect 版本选择](doc/usage.md#easyconnect-版本选择)）；
-3. 根据提示输入服务器地址、登录凭据。
-
-### 图形界面版 EasyConnect（x86、amd64、arm64、mips64el 架构）
-
-1. [安装Docker并运行](https://docs.docker.com/get-docker/)；
-2. 在终端输入： `docker run --rm --device /dev/net/tun --cap-add NET_ADMIN -ti -e PASSWORD=xxxx -e URLWIN=1 -v $HOME/.ecdata:/root -p 127.0.0.1:5901:5901 -p 127.0.0.1:1080:1080 -p 127.0.0.1:8888:8888 hagb/docker-easyconnect:7.6.7`（末尾 EasyConnect 版本号 `7.6.7` 请根据实际情况修改；arm64 和 mips64el 架构需要加入 `-e DISABLE_PKG_VERSION_XML=1` 参数）；
-3. 使用vnc客户端连接vnc， 地址：`127.0.0.1`，端口: 5901, 密码 xxxx；
-4. 成功连上后你应该能看到 EasyConnect 的登录窗口，填写登录凭据并登录，若需要 web 登录可参看 [web 登录](doc/usage.md#web-登录)。
-
-### 图形界面版 aTrust（amd64、arm64、mips64el 架构）
-
-1. [安装Docker并运行](https://docs.docker.com/get-docker/)；
-2. 在终端输入： `docker run --rm --device /dev/net/tun --cap-add NET_ADMIN -ti -e PASSWORD=xxxx -e URLWIN=1 -v $HOME/.atrust-data:/root -p 127.0.0.1:5901:5901 -p 127.0.0.1:1080:1080 -p 127.0.0.1:8888:8888 -p 127.0.0.1:54631:54631 --sysctl net.ipv4.conf.default.route_localnet=1 hagb/docker-atrust`；
-3. 使用vnc客户端连接vnc， 地址：127.0.0.1，端口: 5901, 密码 xxxx；
-4. 成功连上后你应该能看到 aTrust 的登录窗口；若需要 web 登录，在宿主机的浏览器打开 aTrust 弹出的网址网址登录即可；若需要无人值守的自动化登录和保活，请[参见此处](https://github.com/kenvix/aTrustLogin)。
-5. 若必须经过 web 界面登录或 web 端需要唤起 `atrust://browserstart` 详见 [#433](https://github.com/docker-easyconnect/docker-easyconnect/issues/443)，你可以使用内置 chromium 版镜像，启动命令需加上 `-e CHROMIUM=1`，详见 [构建带有chromium的VNC镜像](doc/build.md#构建带有-chromium-的-VNC-镜像)。
-
-## 拉取
-
-### 从 Docker Hub 上直接获取：
-
-```
-docker pull hagb/docker-easyconnect:TAG
+```bash
+cd deploy/hziee
+cp -n headless.toml.example headless.toml
+chmod 600 headless.toml
 ```
 
-其中 TAG 可以是如下值（不带 VNC 服务端的 image 比带 VNC 服务端的 image 小）：
+在 `headless.toml` 中填写 `username` 和 `password`，其余学校参数已预设。若已运行图形版，先按部署说明停止它，再完成首次登录：
 
-- `latest`: 默认值，带 VNC 服务端的`7.6.7`版 image，
-- `cli`: 多版本（`7.6.3`, `7.6.7`, `7.6.8`）纯命令行版
-- `vncless`: 不带 VNC 服务端的`7.6.7`版 image
-- `7.6.3`: 带 VNC 服务端的`7.6.3`版 image
-- `vncless-7.6.3`: 不带 VNC 服务端的`7.6.3`版 image
-- `7.6.7`: 带 VNC 服务端的`7.6.7`版 image
-- `vncless-7.6.7`: 不带 VNC 服务端的`7.6.7`版 image
+```bash
+docker compose -f compose.headless.yaml config --quiet
+docker compose -f compose.headless.yaml run --rm --service-ports -it vpn
+```
 
-## 参考资料
+按终端提示完成验证码。登录成功后，在另一终端检查校内地址：
 
-登录过程的一个 hack ([docker-root/usr/local/bin/start-sangfor.sh](docker-root/usr/local/bin/start-sangfor.sh))参考了这篇文章：<https://blog.51cto.com/13226459/2476193>。在此对该文作者表示感谢。
+```bash
+curl --noproxy '' --proxy http://127.0.0.1:8888 --max-time 15 http://10.130.10.75/
+```
 
-## 其他 EasyConnect 相关项目
+按 `Ctrl+C` 结束前台容器，再启动后台服务：
 
-- [@shmilee](https://github.com/shmilee) 的 [easyconnect-in-docker 方案](https://github.com/shmilee/scripts/tree/master/easyconnect-in-docker)（另见 [#35](https://github.com/Hagb/docker-easyconnect/issues/35)）实现了多 EasyConnect 版本共用容器
-- [ultranity/minimal-EasyConnect](https://github.com/ultranity/minimal-EasyConnect): minimal EasyConnect CLI in docker-alpine
-- [Mythologyli/ZJU-Connect](https://github.com/Mythologyli/ZJU-Connect): EasyConnect 和 aTrust 客户端的开源实现
-- [zhangt2333/actions-easyconnect](https://github.com/zhangt2333/actions-easyconnect): Github Actions: run code with EasyConnect VPN
-- [CoolSpring8/rwppa](https://github.com/CoolSpring8/rwppa): 将浙江大学网页版 RVPN 模拟为本地 HTTP 代理 - (ZJU) RVPN Web Portal Proxy Adapter
+```bash
+docker compose -f compose.headless.yaml up -d
+docker compose -f compose.headless.yaml logs --tail=50 -f vpn
+```
 
-## 版权及许可证
+代理地址为 SOCKS5 `127.0.0.1:1080`、HTTP `127.0.0.1:8888`。客户端每 60 秒访问校内地址以保持连接，会话保存在 `headless-data/`。远程部署通过 SSH 隧道使用代理。
 
-> Copyright © 2020 contributors
->
-> This work is free. You can redistribute it and/or modify it under the  
-> terms of the Do What The Fuck You Want To Public License, Version 2,  
-> as published by Sam Hocevar. See the COPYING file for more details. 
->
->        DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE  
->                    Version 2, December 2004  
->
-> Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>  
->
-> Everyone is permitted to copy and distribute verbatim or modified  
-> copies of this license document, and changing it is allowed as long  
-> as the name is changed.  
->  
->            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE  
->   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION  
->  
->  0. You just DO WHAT THE FUCK YOU WANT TO. 
+## 钉钉扫码登录
+
+使用 `deploy/hziee/compose.yaml`，按[部署说明](deploy/hziee/README.md#登录)通过 noVNC 打开 aTrust，填写学校入口并选择钉钉扫码。
+
+## 数据与来源
+
+`.env`、`headless.toml`、`data/` 和 `headless-data/` 保存密码或登录会话，均已加入 Git 忽略规则。
+
+项目基于 [docker-easyconnect](https://github.com/docker-easyconnect/docker-easyconnect)，密码登录使用 [ZJU-Connect](https://github.com/Mythologyli/ZJU-Connect)。仓库采用 [WTFPL](LICENSE.txt) 许可证；aTrust 软件版权归深信服所有。本项目为非官方项目。

@@ -95,3 +95,25 @@
 - **Git 提交**：`2bdbd9cc7a8eb46af50a6399fab4634af560174a docs: rename project to HzieeVPN-easyconnect`，已普通推送到新仓库 origin/master。
 
 ---
+
+## [2026-11-20 14:44] 精简为学校专用启动配置
+
+- **需求/问题描述**：
+  > 去掉与学校无关的启动方式，使项目更精简。
+
+- **实际实现的功能与改动**：
+  - 保留学校 aTrust 账号密码、钉钉扫码两套配置和原有持久化路径、代理端口、HTTP 保活。
+  - 删除 76 个通用启动、镜像构建与配套文件，包括 EasyConnect CLI、X11 示例、多版本多架构参数、构建源码及自动构建工作流。
+  - 首页改为学校专用说明，部署文档补充图形版首次启动步骤，精简重复验证日志；保留许可证与来源说明。
+  - 4 项配置与范围检查先确认目标失败，清理后全部通过；两份 Compose 的完整解析 JSON、三份配置的 SHA-256 与清理前一致，`git diff --check` 通过。
+  - 未修改真实凭据、会话数据或服务器；本机没有 Docker 引擎，未重新运行容器或学校登录。
+
+- **涉及文件**：
+  - `README.md`、`deploy/hziee/README.md`
+  - 删除 `.github/` 中构建与版本检查工作流、`Dockerfile*`、`build-args/`、`build-scripts/`、`docker-root/`、`docker-root-preinst/`、`fake-getlogin/`、`fake-hwaddr/`、`doc/`、`docker-compose.yml`、`macos_example.sh`、`pkg_version.xml`。
+  - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`
+  - `docs/CHANGELOG.md`
+
+- **Git 提交**：待提交。用户已明确批准当前 76 个文件的精简并推送；重新执行 4 项检查、配置 SHA-256 校验及 `git diff --check` 均通过。
+
+---
