@@ -229,3 +229,23 @@
 - **Git 提交**：`6f871aeadffefd2367c34d46f7dcfdc313dbfb99 feat: build HZIEE VPN image from cloned client sources`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---
+
+## [2026-11-20 19:20] 在指定服务器部署用户镜像并检查网络阻碍
+
+- **需求/问题描述**：
+  > 使用用户自己的镜像和配置部署到指定服务器；用户确认目标为 Termius 中的 HK-AK。
+
+- **实际实现的功能与改动**：
+  - 通过 Termius SFTP 上传 Compose、验证码 Python/HTML 和真实配置到独立目录 `/opt/hziee-headless`；三个公开文件 SHA-256 与本地一致，私密配置也校验一致且权限为 600，凭据未输出或提交。
+  - 实际拉取 GHCR 镜像，摘要与此前发布结果一致；容器版本对应源码提交 `6f871ae`，服务器 Compose config 退出 0。本地 10 项验证码测试与 Compose 校验通过。
+  - 保留旧容器、配置和数据，备份旧 Compose，停止旧容器后启动验证码登录；所有代理及网页端口仅绑定回环地址，用户通过 SSH 本地转发完成验证码提交。
+  - 客户端随后报 `no reachable node for ip request` 并退出。服务器到两台学校节点的 10441 TCP/TLS 检查均超时，退出 124；本机对相同节点可以完成 TLS 1.3 握手。没有修改防火墙、路由或客户端源码。
+  - 已重新启动旧容器并确认 Up；旧代理校内 HTTP 请求同样超时，curl 退出 28。新服务未切换后台运行，HTTP/SOCKS5 和 60 秒保活验证未完成；需要先恢复指定服务器到学校 VPN 节点的连通性。
+
+- **涉及文件**：
+  - `deploy/hziee/README.md`、`memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`、`docs/CHANGELOG.md`。
+  - 远程部署文件位于 `/opt/hziee-headless`，私密配置和登录日志仅保留在服务器，未纳入 Git。
+
+- **Git 提交**：待提交部署检查记录；服务启用仍受节点网络连通性阻碍。
+
+---
