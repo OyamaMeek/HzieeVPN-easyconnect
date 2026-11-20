@@ -280,6 +280,6 @@
 - **涉及文件**：
   - `memory/progress.md`、`docs/CHANGELOG.md`。
 
-- **Git 提交**：待提交英国服务器对照记录。
+- **Git 提交**：`c47003b docs: record UK server VPN node connectivity checks`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---
