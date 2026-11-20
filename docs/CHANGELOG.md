@@ -136,6 +136,6 @@
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`
   - `docs/CHANGELOG.md`
 
-- **Git 提交**：待提交。
+- **Git 提交**：`be5c0244369d008cb88e8b0e3696c8d945c2461e feat: add browser captcha login for HZIEE`，已普通推送到 origin/master。
 
 ---
