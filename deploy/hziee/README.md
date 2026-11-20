@@ -65,6 +65,8 @@ docker compose -f compose.yaml up -d atrust
 ssh -N -L 127.0.0.1:18081:127.0.0.1:18081 root@example.com
 ```
 
+`example.com` 是占位符，请替换为自己的服务器地址，并使用自己的 SSH 用户名。
+
 登录成功后先验证代理，再按 `Ctrl+C` 结束登录脚本，按照上文启动后台服务。没有图形验证码时页面会直接显示连接状态。若需要保留纯终端点选输入方式，可使用原命令：
 
 ```bash
@@ -81,7 +83,7 @@ python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v
 
 ## HK-AK 当前部署
 
-- 服务器：`example.com:22`，Debian 13，amd64。
+- 部署环境：Debian 13，amd64；服务器地址由部署者自行指定。
 - 目录：`/opt/hziee-vpn`。
 - 容器：`hziee-vpn-atrust-1`，使用本目录的 `compose.yaml`。
 - Docker 服务开机启动；容器配置 `restart: unless-stopped`。

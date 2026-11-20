@@ -21,7 +21,7 @@
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`
   - `docs/CHANGELOG.md`
 
-- **Git 提交**：`98399010f24f1a7a6de1a680312c7a9995f50a95 feat: add private HZIEE aTrust deployment`，已普通推送到 origin/master。
+- **Git 提交**：`bb3dfe26f2c03054b7093bf8e19e3dec4048d19c feat: add private HZIEE aTrust deployment`，采用历史脱敏后的提交哈希。
 
 ---
 
@@ -47,7 +47,7 @@
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`
   - `docs/CHANGELOG.md`
 
-- **Git 提交**：`b8ad85a653edba253ea4d925065f44784f4cab05 feat: add headless HZIEE login and minute HTTP keepalive`，已普通推送到 origin/master。
+- **Git 提交**：`cc2526418a57351062cfcd766281270c73a6f773 feat: add headless HZIEE login and minute HTTP keepalive`，采用历史脱敏后的提交哈希。
 
 ---
 
@@ -71,7 +71,7 @@
   - `docs/CHANGELOG.md`
   - `deploy/hziee/headless.toml` 仅调整本地权限，保持 Git 忽略。
 
-- **Git 提交**：`a279dddcfaff2272749abe76aa221e88208cf4fb docs: record successful headless VPN runtime tests`，已普通推送到 origin/master。
+- **Git 提交**：`61472252148c65a5271d9b8b295853f7698b9c2e docs: record successful headless VPN runtime tests`，采用历史脱敏后的提交哈希。
 
 ---
 
@@ -92,7 +92,7 @@
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`
   - `docs/CHANGELOG.md`
 
-- **Git 提交**：`2bdbd9cc7a8eb46af50a6399fab4634af560174a docs: rename project to HzieeVPN-easyconnect`，已普通推送到新仓库 origin/master。
+- **Git 提交**：`c3d3434aa3d3d37907e4a1dc409bd35355cfc2ec docs: rename project to HzieeVPN-easyconnect`，采用历史脱敏后的提交哈希。
 
 ---
 
@@ -114,7 +114,7 @@
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`
   - `docs/CHANGELOG.md`
 
-- **Git 提交**：`90d4b110ea857499c1f4172684dd8cdbe30f242b refactor: retain only HZIEE VPN deployment paths`，已按用户确认的范围普通推送到 origin/master。
+- **Git 提交**：`5bc47f9f05878a19ec2b308b6160253900aa7bc9 refactor: retain only HZIEE VPN deployment paths`，采用历史脱敏后的提交哈希。
 
 ---
 
@@ -136,6 +136,27 @@
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`
   - `docs/CHANGELOG.md`
 
-- **Git 提交**：`be5c0244369d008cb88e8b0e3696c8d945c2461e feat: add browser captcha login for HZIEE`，已普通推送到 origin/master。
+- **Git 提交**：`1a3be05fe33570f24dd42ab8bc3e12ca0c4c6ac9 feat: add browser captcha login for HZIEE`，采用历史脱敏后的提交哈希。
+
+---
+
+## [2026-11-20 15:39] 清除公开历史中的私有服务器 IP
+
+- **需求/问题描述**：
+  > 清除 GitHub 历史中的真实 VPS IP，用户明确授权本次重写历史和强制更新远端。
+
+- **实际实现的功能与改动**：
+  - 将受影响的 12 个提交中的真实地址替换为示例域名；保留更早上游历史、签名、所有部署功能与配置。
+  - 当前 SSH 示例明确说明地址占位符，代理记录不保存真实 VPS 地址；更新当前开发记录中的提交哈希。
+  - 本地完整恢复备份校验通过，权限 600，存放于被忽略的工作目录；没有上传备份或替换规则。
+  - 原地址检查清理前失败、清理后通过；完整 master 历史与当前跟踪文件无原地址，代码与配置对比无差异。
+  - 本次未运行 Docker 容器或修改服务器；新用户首次部署全过程尚未验证，已有克隆与 GitHub 旧对象缓存不在本地清理控制范围内。
+
+- **涉及文件**：
+  - `deploy/hziee/README.md`
+  - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`
+  - `docs/CHANGELOG.md`
+
+- **Git 提交**：待提交；本地脱敏与验证已完成，待保存说明并更新远端。
 
 ---
