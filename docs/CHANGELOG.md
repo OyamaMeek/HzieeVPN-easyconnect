@@ -263,6 +263,6 @@
 - **涉及文件**：
   - `memory/progress.md`、`docs/CHANGELOG.md`。
 
-- **Git 提交**：待提交连接重试记录。
+- **Git 提交**：`75e58e3 docs: record repeated HK-AK node connection timeouts`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---
