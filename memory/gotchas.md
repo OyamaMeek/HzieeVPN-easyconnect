@@ -6,3 +6,4 @@
 - 学校入口包含 aTrust 标识，应按 aTrust 部署，不能仅根据仓库名称选择 EasyConnect。
 - Termius 命令使用 paste 并单独 Return，避免 typeText 丢失 shell 标点。
 - Debian 13 使用 --no-install-recommends 安装 docker.io 时需显式安装 docker-cli。
+- ZJU-Connect 1.3.1 的终端验证码输入使用包含 `coordinates`、`width`、`height` 的完整 JSON 对象；宽高采用验证码原图尺寸。

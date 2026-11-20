@@ -51,7 +51,7 @@ docker compose -f compose.headless.yaml stop vpn
 docker compose -f compose.yaml up -d atrust
 ```
 
-本次仅增加项目配置，服务器尚未切换；尚未使用真实账号验证登录和校内访问。
+本地原生客户端已使用真实账号完成密码认证，并验证 HTTP / SOCKS5 访问目标网址均返回 HTTP 200；恢复已保存会话时无需重复验证码。服务器尚未切换，本机未运行 Docker 容器。
 
 ## HK-AK 当前部署
 
@@ -143,4 +143,9 @@ docker compose restart
 - Docker Hub 确认 `mythologyli/zju-connect:1.3.1` 的 Linux amd64、arm64 镜像存在。
 - ZJU-Connect 1.3.1 成功解析 `headless.toml.example`，并通过 `-auth-info` 实际查询学校服务器，退出码 0；“上网账号(I-XG)”返回 `loginDomain=ShenLan`、`authType=auth/psw`。
 - 本机通过现有 HTTP 18888 代理访问 `http://10.130.10.75/`，10 秒无响应，curl 退出码 28。
-- 未取得真实账号密码，尚未验证无图形登录和登录后的分钟保活。
+- 本地真实账号测试：学校服务器要求点选图形验证码，完成后密码认证成功，客户端启动；没有要求短信验证码。
+- HTTP 8888 和 SOCKS5 1080 均仅监听 127.0.0.1；通过两者访问目标网址均返回 HTTP 200，响应体各 7624 字节。
+- 结束客户端后读取同一会话文件重启，日志显示 `Already logged in`，没有再次要求图形验证码；会话恢复后的首次保活返回 HTTP 200。
+- 实际保活日志：13:35:35、13:36:35 均返回 HTTP 200，间隔 60 秒；测试进程已结束，本机测试代理端口已释放。
+- 真实配置和测试会话文件权限为 600；测试数据保存在已忽略的 `.agent/work/login-test/`，不提交账号、密码或会话。
+- 本机未安装 Docker 引擎，容器启动及 HK-AK 迁移尚未验证。

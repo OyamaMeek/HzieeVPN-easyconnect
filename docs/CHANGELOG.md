@@ -50,3 +50,27 @@
 - **Git 提交**：`b8ad85a653edba253ea4d925065f44784f4cab05 feat: add headless HZIEE login and minute HTTP keepalive`，已普通推送到 origin/master。
 
 ---
+
+## [2026-11-20 13:37] 本地真实账号登录与分钟保活验证
+
+- **需求/问题描述**：
+  > 使用用户在本地填写的账号密码测试登录；用户已允许查看学校验证码并继续测试。
+
+- **实际实现的功能与改动**：
+  - 安全解析实际配置，检查学校入口和必填字段，将真实配置权限收紧为 600；账号密码、会话数据均不入库。
+  - 使用本机原生 ZJU-Connect 1.3.1，完成学校点选验证码，学校密码认证返回 code=0，客户端启动。
+  - HTTP 8888、SOCKS5 1080 仅监听 127.0.0.1；通过两者访问目标地址均 HTTP 200、7624 字节，curl 退出 0。
+  - 重启读取已保存会话，日志 Already logged in，没有再次要求验证码。
+  - 自动保活于 13:35:35、13:36:35 均 HTTP 200，断言确认间隔 60 秒。
+  - 正常结束测试进程并确认端口释放，删除含认证详情的临时调试日志；保存脱敏验证记录和正确的终端验证码输入格式。
+  - 本机无 Docker 引擎，未执行容器启动和服务器切换；未验证长期稳定性及业务系统内具体功能。
+
+- **涉及文件**：
+  - `deploy/hziee/README.md`
+  - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`
+  - `docs/CHANGELOG.md`
+  - `deploy/hziee/headless.toml` 仅调整本地权限，保持 Git 忽略。
+
+- **Git 提交**：待提交，真实账号测试与清理已完成。
+
+---
