@@ -218,13 +218,14 @@
   - 补充源码来源、AGPL-3.0 许可证和编译部署说明，Docker 上下文排除本地密码、会话与工具。
   - Go 全包测试和 vet、macOS arm64 及 Linux amd64/arm64 编译均通过；10 项验证码测试、Compose、JavaScript、YAML 和 diff 检查通过。
   - 导入完整性检查通过；仅默认配置和两个测试区别于上游。验证码代码、本地凭据与会话校验未改变，Compose 完整 JSON 仅改变镜像引用。
-  - GitHub 实际镜像编译、发布和容器启动待推送后跟踪；本次未操作服务器或重新登录 VPN。
+  - GitHub Actions `44721199266` 的 test/image 均成功，实际完成两种架构的编译发布与容器启动检查；容器版本输出对应源码提交 `6f871ae`。
+  - GHCR 匿名清单请求成功，确认 Linux amd64/arm64；镜像摘要为 `sha256:b8ee8094ec3dc2c0e759ccd4249d09605ddb8768a8650d365807e4ceefc34b59`。没有修改包可见性，本次未操作服务器或重新登录 VPN。
 
 - **涉及文件**：
   - `main.go`、`init.go`、`init_test.go`、`go.mod`、`go.sum`、`LICENSE`，以及 `client/`、`configs/`、`dial/`、`internal/`、`log/`、`mobile/`、`resolve/`、`service/`、`stack/`、`underlay/`。
   - `Dockerfile`、`.dockerignore`、`.github/workflows/build-image.yml`、`.gitignore`、`SOURCE.md`。
   - `deploy/hziee/compose.headless.yaml`、首页与部署说明、`memory/` 五份记录和本日志。
 
-- **Git 提交**：待提交；GitHub 构建结果与实际提交哈希将在后续文档提交补记。
+- **Git 提交**：`6f871aeadffefd2367c34d46f7dcfdc313dbfb99 feat: build HZIEE VPN image from cloned client sources`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---

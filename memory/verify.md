@@ -9,4 +9,6 @@
 - 提交仅包含源码、构建、配置、测试与文档；运行 git diff --check，普通推送后核对远端。
 - 本次不操作服务器或重新登录；没有实际运行的检查不得记为通过。
 
-本地结果：学校默认测试首先因原默认协议 easyconnect 失败，修改后通过。Go 全包测试及 vet 通过，macOS arm64、Linux amd64/arm64 静态编译均退出 0，原生二进制 `-version` 正常。10 项验证码测试、Compose config、JavaScript 语法、工作流 YAML 和 diff 检查通过。`.agent/work/password-source/check.py` 核对 132 个导入文件，仅学校默认配置与两个对应测试区别于上游；验证码代码、TOML 示例、本地凭据及会话 SHA-256 一致，Compose 完整 JSON 仅改变镜像引用。GitHub 实际构建和发布待跟踪。
+本地结果：学校默认测试首先因原默认协议 easyconnect 失败，修改后通过。Go 全包测试及 vet 通过，macOS arm64、Linux amd64/arm64 静态编译均退出 0，原生二进制 `-version` 正常；不指定学校地址执行 `-auth-info` 成功取得学校真实认证方式，确认 ShenLan / auth/psw。10 项验证码测试、Compose config、JavaScript 语法、工作流 YAML 和 diff 检查通过。`.agent/work/password-source/check.py` 核对 132 个导入文件，仅学校默认配置与两个对应测试区别于上游；验证码代码、TOML 示例、本地凭据及会话 SHA-256 一致，Compose 完整 JSON 仅改变镜像引用。
+
+GitHub 实际结果：[Actions 44721199266](https://github.com/OyamaMeek/HzieeVPN-easyconnect/actions/runs/44721199266) 的 test/image 两项均为 success，构建日志确认两种架构分别执行 go build，发布摘要为 `sha256:b8ee8094ec3dc2c0e759ccd4249d09605ddb8768a8650d365807e4ceefc34b59`。Smoke test published image 成功，容器输出 `ZJU Connect hziee-6f871aeadffefd2367c34d46f7dcfdc313dbfb99`。匿名请求 GHCR token 和 latest OCI 清单成功，检查确认 linux/amd64、linux/arm64；未更改包可见性。镜像可公开拉取；本次没有在服务器启动或切换 VPN。
