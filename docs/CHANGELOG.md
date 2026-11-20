@@ -162,3 +162,25 @@
 - **Git 提交**：`713a61d73613e3cf81c66b35d435be62cf8a69e8 fix: redact private VPS address from public history`，已按用户授权更新 origin/master；本记录通过后续文档提交补记。
 
 ---
+
+## [2026-11-20 17:39] 恢复完整镜像构建源码
+
+- **需求/问题描述**：
+  > 把原本的源文件恢复回来，需要能够编译的版本。
+
+- **实际实现的功能与改动**：
+  - 从删除前的 `e198c26` 恢复 76 个文件，包括四份 Dockerfile、构建脚本与多架构参数、容器源码、两个 C 辅助库、工作流、通用示例和文档；恢复执行权限及三个符号链接。
+  - 首页补充 Linux amd64 aTrust 的两阶段构建命令；新增 `.dockerignore`，排除真实凭据、会话、Git 历史与本地工具。
+  - 保留源文件内容，仅清理旧行尾空白、末尾空行并补齐一个 C 文件的末尾换行。
+  - 恢复前完整性检查因 76 个文件缺失失败，恢复后完整性和 COPY 依赖检查通过。原 Makefile 编译两个 C 库的 Linux amd64、arm64 版本成功，四个产物确认为 ELF 共享库。
+  - 22 个 Shell 语法、10 项现有 Python 测试、三份 Compose 与三个工作流 YAML 解析通过；学校两份 Compose 完整 JSON 与原基线一致。
+  - 本机没有 Docker 引擎，未执行完整镜像构建、容器启动或服务器变更。真实学校配置及会话未修改；编译工具、检查脚本与产物保存在已忽略目录。
+
+- **涉及文件**：
+  - `.github/`、`Dockerfile*`、`build-args/`、`build-scripts/`、`docker-root/`、`docker-root-preinst/`、`fake-getlogin/`、`fake-hwaddr/`。
+  - `doc/`、`docker-compose.yml`、`macos_example.sh`、`pkg_version.xml`。
+  - `.dockerignore`、`README.md`、`memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`、`docs/CHANGELOG.md`。
+
+- **Git 提交**：待提交。
+
+---

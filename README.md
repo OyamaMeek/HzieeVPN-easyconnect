@@ -45,6 +45,17 @@ docker compose -f compose.headless.yaml logs --tail=50 -f vpn
 
 使用 `deploy/hziee/compose.yaml`，按[部署说明](deploy/hziee/README.md#登录)通过 noVNC 打开 aTrust，填写学校入口并选择钉钉扫码。
 
+## 从源码构建
+
+仓库包含原有 Dockerfile、构建脚本、容器启动源码、C 辅助库及多架构参数。先构建辅助镜像，再构建 VPN 镜像；以下命令适用于 Linux amd64 的 aTrust 图形版：
+
+```bash
+docker build --platform linux/amd64 -f Dockerfile.build -t hagb/docker-easyconnect:build .
+docker build --platform linux/amd64 $(cat build-args/atrust-amd64.txt) -f Dockerfile -t hziee-atrust:local .
+```
+
+构建需要 Docker 引擎并联网下载 Debian 依赖与客户端安装包。其他架构、EasyConnect CLI 和无 VNC 版本见[构建说明](doc/build.md)，源码目录见[开发说明](doc/development.md)。学校部署配置默认使用成品镜像。
+
 ## 数据与来源
 
 `.env`、`headless.toml`、`data/` 和 `headless-data/` 保存密码或登录会话，均已加入 Git 忽略规则。
