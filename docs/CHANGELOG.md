@@ -71,6 +71,6 @@
   - `docs/CHANGELOG.md`
   - `deploy/hziee/headless.toml` 仅调整本地权限，保持 Git 忽略。
 
-- **Git 提交**：待提交，真实账号测试与清理已完成。
+- **Git 提交**：`a279dddcfaff2272749abe76aa221e88208cf4fb docs: record successful headless VPN runtime tests`，已普通推送到 origin/master。
 
 ---
