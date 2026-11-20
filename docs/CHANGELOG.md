@@ -202,6 +202,6 @@
   - 删除 `.dockerignore`、`docker-compose.yml`、`macos_example.sh`、`pkg_version.xml`、`deploy/hziee/compose.yaml`。
   - 更新 `README.md`、`deploy/hziee/README.md`、`.gitignore`、`memory/` 五份记录、`docs/CHANGELOG.md`。
 
-- **Git 提交**：待提交；完成后通过后续文档提交补记实际哈希。
+- **Git 提交**：`92721a55a4474ebc171e7eea11df5d33ecfa35af refactor: retain only HZIEE password login and captcha web`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---
