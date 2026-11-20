@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>杭电信工 · 验证码</title>
+  <style>
+    :root { color-scheme: light; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; color: #18324b; background: #edf3f8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 24px; }
+    main { width: min(100%, 520px); padding: 32px; background: #fff; border-top: 4px solid #245b86; }
+    h1 { margin: 0 0 12px; font-size: 25px; font-weight: 600; }
+    p { line-height: 1.7; }
+    #message { min-height: 3.4em; color: #4e6578; }
+    #picker { position: relative; width: fit-content; max-width: 100%; margin: 24px auto 16px; line-height: 0; }
+    #image { display: block; max-width: 100%; height: auto; cursor: crosshair; touch-action: manipulation; user-select: none; }
+    #image:focus-visible, button:focus-visible { outline: 3px solid #245b86; outline-offset: 4px; }
+    .marker { position: absolute; width: 24px; height: 24px; display: grid; place-items: center; transform: translate(-50%, -50%); border-radius: 50%; background: #245b86; border: 2px solid white; color: white; font-size: 13px; line-height: 1; pointer-events: none; }
+    .actions { display: flex; gap: 12px; }
+    button { padding: 11px 16px; border: 1px solid #c5d3df; background: white; color: #18324b; font: inherit; cursor: pointer; border-radius: 5px; }
+    button:disabled { opacity: .45; cursor: default; }
+    #submit { width: 100%; margin-top: 16px; border-color: #245b86; background: #245b86; color: white; }
+    #count { margin-bottom: 12px; font-size: 14px; }
+    footer { margin-top: 24px; color: #62788b; font-size: 13px; line-height: 1.7; }
+    [hidden] { display: none !important; }
+    @media (max-width: 420px) { body { padding: 16px; } main { padding: 24px 20px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>完成登录验证</h1>
+    <p id="message" role="status" aria-live="polite">正在连接验证码服务…</p>
+    <section id="challenge" hidden aria-label="点选验证码">
+      <div id="picker">
+        <img id="image" alt="请按图中提示依次点选文字；可用方向键移动选择位置，按回车确认" draggable="false" tabindex="0">
+      </div>
+      <p id="count" aria-live="polite">已选择 0 个位置</p>
+      <div class="actions">
+        <button id="undo" type="button" disabled>撤销上一个</button>
+        <button id="clear" type="button" disabled>全部清除</button>
+      </div>
+      <button id="submit" type="button" disabled>提交验证</button>
+    </section>
+    <footer>按图片中的顺序点选。验证期间请保持登录终端运行。</footer>
+  </main>
+  <script>
+    const token = location.hash.slice(1);
+    window.addEventListener('hashchange', () => location.reload());
+    const image = document.querySelector('#image');
+    const picker = document.querySelector('#picker');
+    const panel = document.querySelector('#challenge');
+    const message = document.querySelector('#message');
+    const count = document.querySelector('#count');
+    const undo = document.querySelector('#undo');
+    const clear = document.querySelector('#clear');
+    const submit = document.querySelector('#submit');
+    let challenge = '', points = [], ready = false, busy = false, stopped = false, blobURL = '';
+    let cursor = [0, 0];
+
+    async function request(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: { Authorization: `Bearer ${token}`, ...options.headers },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) {
+        const error = new Error((await response.json()).message);
+        error.status = response.status;
+        throw error;
+      }
+      return response;
+    }
+
+    function render() {
+      picker.querySelectorAll('.marker').forEach(marker => marker.remove());
+      points.forEach(([x, y], index) => {
+        const marker = document.createElement('span');
+        marker.className = 'marker';
+        marker.textContent = index + 1;
+        marker.style.left = `${x / image.naturalWidth * 100}%`;
+        marker.style.top = `${y / image.naturalHeight * 100}%`;
+        picker.append(marker);
+      });
+      count.textContent = `已选择 ${points.length} 个位置`;
+      undo.disabled = clear.disabled = !ready || busy || points.length === 0;
+      submit.disabled = !ready || busy || points.length === 0;
+    }
+
+    function addPoint(x, y) {
+      if (!ready || busy || points.length >= 32) return;
+      points.push([
+        Math.max(0, Math.min(image.naturalWidth - 1, Math.round(x))),
+        Math.max(0, Math.min(image.naturalHeight - 1, Math.round(y))),
+      ]);
+      render();
+    }
+
+    image.addEventListener('click', event => {
+      const rect = image.getBoundingClientRect();
+      addPoint((event.clientX - rect.left) * image.naturalWidth / rect.width,
+        (event.clientY - rect.top) * image.naturalHeight / rect.height);
+    });
+    image.addEventListener('keydown', event => {
+      if (!ready || busy) return;
+      const moves = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+      if (moves[event.key]) {
+        event.preventDefault();
+        const step = event.shiftKey ? 1 : 5;
+        cursor = cursor.map((value, index) => Math.max(0, Math.min(
+          (index ? image.naturalHeight : image.naturalWidth) - 1,
+          value + moves[event.key][index] * step)));
+        count.textContent = `选择位置：${cursor[0]}, ${cursor[1]}；按回车确认。已选择 ${points.length} 个位置`;
+      } else if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        addPoint(...cursor);
+      }
+    });
+    undo.addEventListener('click', () => { points.pop(); render(); });
+    clear.addEventListener('click', () => { points = []; render(); });
+
+    submit.addEventListener('click', async () => {
+      if (!ready || busy || !points.length) return;
+      busy = true;
+      render();
+      try {
+        await request('/api/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ challenge, coordinates: points, width: image.naturalWidth, height: image.naturalHeight }) });
+        ready = false;
+        panel.hidden = true;
+        message.textContent = '已提交，正在验证；如需重新点选，页面会自动换图。';
+      } catch (error) {
+        message.textContent = error.message;
+      } finally {
+        busy = false;
+        render();
+      }
+    });
+
+    async function poll() {
+      try {
+        const state = await (await request('/api/state')).json();
+        if (!busy) message.textContent = state.message;
+        if (state.status === 'captcha') {
+          if (state.challenge !== challenge || !ready) {
+            ready = false;
+            panel.hidden = true;
+            const response = await request(`/api/image?challenge=${encodeURIComponent(state.challenge)}`);
+            if (blobURL) URL.revokeObjectURL(blobURL);
+            blobURL = URL.createObjectURL(await response.blob());
+            image.src = blobURL;
+            await image.decode();
+            challenge = state.challenge;
+            points = [];
+            cursor = [Math.floor(image.naturalWidth / 2), Math.floor(image.naturalHeight / 2)];
+            ready = true;
+          }
+          panel.hidden = false;
+        } else {
+          ready = false;
+          panel.hidden = true;
+          if (state.status === 'exited') stopped = true;
+        }
+        render();
+      } catch (error) {
+        ready = false;
+        render();
+        message.textContent = error.status === 403 ? error.message : '验证码服务暂时无法连接，请确认登录终端仍在运行。';
+        if (error.status === 403) stopped = true;
+      }
+      if (!stopped) setTimeout(poll, 1000);
+    }
+    poll();
+  </script>
+</body>
+</html>

@@ -11,7 +11,7 @@
 
 ## 账号密码登录
 
-准备好 Docker 和 Docker Compose，在项目目录执行；已有配置文件时保留原文件：
+准备好 Docker、Docker Compose 和 Python 3（3.9 或更新版本），在项目目录执行；已有配置文件时保留原文件：
 
 ```bash
 cd deploy/hziee
@@ -23,10 +23,10 @@ chmod 600 headless.toml
 
 ```bash
 docker compose -f compose.headless.yaml config --quiet
-docker compose -f compose.headless.yaml run --rm --service-ports -it vpn
+python3 captcha_web.py
 ```
 
-按终端提示完成验证码。登录成功后，在另一终端检查校内地址：
+打开终端输出的完整网页链接，按验证码提示依次点击并提交；网页仅监听本机 `127.0.0.1:18081`。服务器部署时，先在 Termius 添加同端口的 SSH 本地转发，详见[验证码网页](deploy/hziee/README.md#验证码网页)。短信或其他二次认证仍在终端输入。登录成功后，在另一终端检查校内地址：
 
 ```bash
 curl --noproxy '' --proxy http://127.0.0.1:8888 --max-time 15 http://10.130.10.75/

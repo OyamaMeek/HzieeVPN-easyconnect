@@ -117,3 +117,25 @@
 - **Git 提交**：`90d4b110ea857499c1f4172684dd8cdbe30f242b refactor: retain only HZIEE VPN deployment paths`，已按用户确认的范围普通推送到 origin/master。
 
 ---
+
+## [2026-11-20 15:20] 增加验证码点选网页
+
+- **需求/问题描述**：
+  > 为账号密码登录提供一个网页，由用户点击验证码后继续登录。
+
+- **实际实现的功能与改动**：
+  - 增加 Python 标准库登录脚本，默认启动现有 Compose 前台登录容器；网页点选自动向客户端 stdin 提交完整 JSON。
+  - 网页支持顺序点选、缩放坐标换算、撤销、清空、键盘选择和重试换图；仅监听 127.0.0.1:18081，随机令牌限制访问，拒绝过期或重复提交。
+  - 更新首页和部署说明，提供首次登录入口及 Termius/SSH 同端口转发步骤；保留现有 Compose、凭据、会话和后台服务方式。
+  - 测试先因缺少模块失败；实现后 10 项 HTTP/真实子进程管道测试通过。浏览器行为、HTML JavaScript 语法、Compose 配置与 diff 检查通过；Ctrl+C/SIGTERM 清理已验证。
+  - 用户通过网页点选完成真实 ZJU-Connect 登录，15:17:26 自动换图重试、15:17:36 客户端启动；HTTP/SOCKS5 访问校内目标均 HTTP 200、7624 字节。网页与代理仅监听 127.0.0.1，会话权限 600；当前连接保持运行。未运行 Docker 容器、切换服务器或截图。
+
+- **涉及文件**：
+  - `deploy/hziee/captcha_web.py`、`deploy/hziee/captcha.html`、`deploy/hziee/test_captcha_web.py`
+  - `README.md`、`deploy/hziee/README.md`
+  - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`
+  - `docs/CHANGELOG.md`
+
+- **Git 提交**：待提交。
+
+---
