@@ -2,7 +2,21 @@
 
 杭州电子科技大学信息工程学院的 aTrust VPN 账号密码登录与验证码网页。学校入口：<https://vpn.hziee.edu.cn>。
 
-使用 ZJU-Connect 1.3.1 成品镜像，以“上网账号(I-XG)”登录。完整操作见[部署说明](deploy/hziee/README.md)。
+本仓库包含从 ZJU-Connect 克隆的完整客户端源码，默认以学校“上网账号(I-XG)”登录。GitHub Actions 编译并发布学校镜像 `ghcr.io/oyamameek/hzieevpn-easyconnect:latest`，部署使用本仓库构建结果。完整操作见[部署说明](deploy/hziee/README.md)，上游版本与许可证见[源码来源](SOURCE.md)。
+
+## 编译镜像
+
+推送源码到 `master` 后，[GitHub Actions](https://github.com/OyamaMeek/HzieeVPN-easyconnect/actions/workflows/build-image.yml) 自动运行 Go 和验证码测试，并从源码构建、发布 Linux amd64/arm64 镜像，同时保留 `sha-完整提交哈希` 标签。GitHub 内置的 `GITHUB_TOKEN` 用于发布 GHCR，无需 Docker Hub 账号。
+
+本地安装 Go 1.27.4 后可以直接编译，或使用 Docker：
+
+```bash
+go test ./...
+go build -trimpath -o bin/zju-connect .
+docker build -t hziee-vpn:local .
+```
+
+默认入口为 `vpn.hziee.edu.cn:443`、协议 `atrust`、认证 `auth/psw`、登录域 `ShenLan`。账号密码在部署时填写，不写入源码或镜像。
 
 ## 首次登录
 
@@ -18,6 +32,7 @@ chmod 600 headless.toml
 
 ```bash
 docker compose -f compose.headless.yaml config --quiet
+docker compose -f compose.headless.yaml pull
 python3 captcha_web.py
 ```
 
@@ -40,4 +55,4 @@ SOCKS5 代理为 `127.0.0.1:1080`，HTTP 代理为 `127.0.0.1:8888`。客户端�
 
 `headless.toml` 保存账号密码，`headless-data/` 保存验证码和登录会话，均已加入 Git 忽略规则。
 
-项目基于 [docker-easyconnect](https://github.com/docker-easyconnect/docker-easyconnect)，密码登录使用 [ZJU-Connect](https://github.com/Mythologyli/ZJU-Connect)。仓库采用 [WTFPL](LICENSE.txt) 许可证；aTrust 软件版权归深信服所有。本项目为非官方项目。
+客户端源码来自 [ZJU-Connect](https://github.com/Mythologyli/ZJU-Connect)，遵循 [AGPL-3.0](LICENSE)，原有版权声明保持不变。原 docker-easyconnect 内容保留 [WTFPL](LICENSE.txt)。本项目为非官方项目。

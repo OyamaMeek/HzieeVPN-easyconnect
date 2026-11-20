@@ -1,7 +1,7 @@
 name: hziee-headless
 services:
   vpn:
-    image: mythologyli/zju-connect:1.3.1
+    image: ghcr.io/oyamameek/hzieevpn-easyconnect:latest
     restart: unless-stopped
     volumes:
       - type: bind

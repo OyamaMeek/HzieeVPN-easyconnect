@@ -1,13 +1,12 @@
 # 当前验证标准
 
-- 产品文件仅包含信工 VPN 密码登录配置、验证码 Python/HTML、测试、使用说明和许可证；开发记录按协作要求保留。
-- 删除通用构建、扫码/VNC 和对应工作流后，保留文件 SHA-256 与 Compose 完整解析 JSON 必须与清理前一致；本地凭据和会话不变且继续被 Git 忽略。
-- 运行 `python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v`，验证真实 HTTP 请求、子进程 stdin、鉴权、坐标校验、重复与过期提交、进程退出处理。
-- 使用已有 `.agent/work/docker-compose` 校验 `compose.headless.yaml`，确认只包含 vpn 服务，使用 ZJU-Connect 1.3.1，端口只绑定 127.0.0.1，保留配置只读挂载、会话目录、自动重启与日志轮换。
-- 检查首页和部署说明无已删除入口、失效本地链接；检查 HTML 内联 JavaScript 语法与 `git diff --check`。
-- 提交不包含密码、会话、验证码、日志或本地工具；普通推送后核对 origin/master 与 HEAD。
-- 本机没有 Docker 引擎，本次不验证容器启动、真实重新登录或服务器切换；不执行视觉检查。
+- 上游源代码、Go 模块校验文件、协议依赖和许可证必须完整纳入 GitHub，镜像构建必须执行本地源码的 `go build`。
+- 学校默认配置测试覆盖 aTrust、vpn.hziee.edu.cn:443、auth/psw、ShenLan、1080/8888 和校内 HTTP 保活；先确认测试因原默认配置失败。
+- 运行 Go 全部测试、Go vet、原生编译和 Linux amd64/arm64 交叉编译；构建产物放入忽略目录。
+- 运行 10 项验证码 HTTP/子进程测试、JavaScript 语法检查和 Compose 配置；验证码代码、真实配置与会话不得改变。
+- Docker 构建上下文排除 .git、.agent、本地密码、会话和日志；镜像不得使用 mythologyli/zju-connect 成品镜像。
+- GitHub Actions 实际完成测试、构建和 GHCR 发布后，检查多架构镜像清单与工作流结果；失败时修正并跟踪完成。
+- 提交仅包含源码、构建、配置、测试与文档；运行 git diff --check，普通推送后核对远端。
+- 本次不操作服务器或重新登录；没有实际运行的检查不得记为通过。
 
-历史真实登录证据保存在 `docs/CHANGELOG.md`：2026-11-20 本机原生客户端曾通过网页点选完成密码认证，HTTP/SOCKS5 访问校内目标均 HTTP 200，会话恢复与 60 秒保活通过。这些历史结果不作为本次容器运行证据。
-
-本次实际结果：`.agent/work/password-only/check_scope.py` 清理前 4 项中 2 项因无关文件和文档入口失败，清理后 4 项全部通过。保留的 5 个产品文件、本地凭据与会话基线 SHA-256 一致，Compose 完整 JSON 一致；10 项现有 HTTP/真实子进程管道测试、Compose 5.8.0 config、Node JavaScript 语法与 `git diff --check` 全部通过。检查脚本及基线仅保存在被忽略的 `.agent/work/password-only/`。未运行 Docker 容器、真实重新登录、视觉检查或服务器操作。
+本地结果：学校默认测试首先因原默认协议 easyconnect 失败，修改后通过。Go 全包测试及 vet 通过，macOS arm64、Linux amd64/arm64 静态编译均退出 0，原生二进制 `-version` 正常。10 项验证码测试、Compose config、JavaScript 语法、工作流 YAML 和 diff 检查通过。`.agent/work/password-source/check.py` 核对 132 个导入文件，仅学校默认配置与两个对应测试区别于上游；验证码代码、TOML 示例、本地凭据及会话 SHA-256 一致，Compose 完整 JSON 仅改变镜像引用。GitHub 实际构建和发布待跟踪。

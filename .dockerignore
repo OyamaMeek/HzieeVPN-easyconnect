@@ -1,0 +1,14 @@
+.git
+.github
+.agent
+.DS_Store
+**/.DS_Store
+**/__pycache__
+.env
+**/.env
+**/*.log
+deploy/hziee/headless.toml
+deploy/hziee/headless-data
+deploy/hziee/data
+bin
+memory

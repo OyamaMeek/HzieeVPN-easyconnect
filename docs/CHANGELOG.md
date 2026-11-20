@@ -205,3 +205,26 @@
 - **Git 提交**：`92721a55a4474ebc171e7eea11df5d33ecfa35af refactor: retain only HZIEE password login and captcha web`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---
+
+## [2026-11-20 18:38] 克隆客户端源码并构建学校镜像
+
+- **需求/问题描述**：
+  > 保留账号密码登录相关的可编译源码；克隆 ZJU-Connect，改为学校地址，通过 GitHub 编译镜像用于部署。
+
+- **实际实现的功能与改动**：
+  - 克隆 ZJU-Connect v1.3.1 的 `5d7f5b11fcf231f72a0ec0d888bf0f2eadcce1da`，导入 132 个 Go 源码、依赖锁定文件、测试和许可证；保留完整协议依赖结构。
+  - 默认配置改为 aTrust、vpn.hziee.edu.cn:443、auth/psw、ShenLan、HTTP 8888 和学校保活地址；学校默认测试先因旧协议失败，修改后通过。
+  - Dockerfile 从本仓库执行 go build，GitHub Actions 测试后构建 Linux amd64/arm64 并发布 GHCR，使用 latest 与完整提交哈希标签；学校 Compose 改用本仓库镜像。
+  - 补充源码来源、AGPL-3.0 许可证和编译部署说明，Docker 上下文排除本地密码、会话与工具。
+  - Go 全包测试和 vet、macOS arm64 及 Linux amd64/arm64 编译均通过；10 项验证码测试、Compose、JavaScript、YAML 和 diff 检查通过。
+  - 导入完整性检查通过；仅默认配置和两个测试区别于上游。验证码代码、本地凭据与会话校验未改变，Compose 完整 JSON 仅改变镜像引用。
+  - GitHub 实际镜像编译、发布和容器启动待推送后跟踪；本次未操作服务器或重新登录 VPN。
+
+- **涉及文件**：
+  - `main.go`、`init.go`、`init_test.go`、`go.mod`、`go.sum`、`LICENSE`，以及 `client/`、`configs/`、`dial/`、`internal/`、`log/`、`mobile/`、`resolve/`、`service/`、`stack/`、`underlay/`。
+  - `Dockerfile`、`.dockerignore`、`.github/workflows/build-image.yml`、`.gitignore`、`SOURCE.md`。
+  - `deploy/hziee/compose.headless.yaml`、首页与部署说明、`memory/` 五份记录和本日志。
+
+- **Git 提交**：待提交；GitHub 构建结果与实际提交哈希将在后续文档提交补记。
+
+---

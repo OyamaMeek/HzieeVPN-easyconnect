@@ -5,3 +5,4 @@ deploy/hziee/headless-data/
 .agent/work/
 .DS_Store
 __pycache__/
+bin/

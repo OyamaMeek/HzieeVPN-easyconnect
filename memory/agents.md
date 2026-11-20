@@ -3,7 +3,7 @@
 - 代理：Codex，Ponytail full。
 - 本地项目：macOS 上的 HzieeVPN-easyconnect，master 分支；工作目录仍为 docker-easyconnect。
 - GitHub 仓库：OyamaMeek/HzieeVPN-easyconnect，仓库 ID 1464974211。
-- 项目仅保留学校账号密码部署配置、验证码网页登录脚本、测试与说明，使用 ZJU-Connect 成品镜像。
+- 项目包含从 ZJU-Connect 克隆的 Go 客户端源码、学校密码登录配置及验证码网页；镜像由本仓库 GitHub Actions 编译并发布至 GHCR。
 - 目标服务器：用户私有 VPS，Debian 13 amd64；真实地址仅保留在用户本地连接配置中。
 - 远程操作：用户指定 Termius，通过 cua_repl 操作现有终端；Termalin 因账户限制不可用。
 - 登录：学校入口 https://vpn.hziee.edu.cn 使用 aTrust；现有服务器通过钉钉扫码登录，用户已确认另有门户直接密码账号。

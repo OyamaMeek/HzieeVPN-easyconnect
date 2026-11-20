@@ -1,6 +1,6 @@
 # 杭电信工 VPN 账号密码登录
 
-学校入口：<https://vpn.hziee.edu.cn>。使用“上网账号(I-XG)”密码认证，客户端为 ZJU-Connect 1.3.1，验证码在本机浏览器点选。
+学校入口：<https://vpn.hziee.edu.cn>。使用“上网账号(I-XG)”密码认证，验证码在本机浏览器点选。客户端源码保存在本仓库，由 GitHub Actions 编译发布为 `ghcr.io/oyamameek/hzieevpn-easyconnect:latest`。源码版本和许可证见[源码来源](../../SOURCE.md)。
 
 ## 准备与首次登录
 
@@ -15,6 +15,7 @@ chmod 600 headless.toml
 
 ```bash
 docker compose -f compose.headless.yaml config --quiet
+docker compose -f compose.headless.yaml pull
 python3 captcha_web.py
 ```
 
@@ -77,12 +78,22 @@ docker compose -f compose.headless.yaml stop vpn
 
 会话失效时，先停止后台服务，再运行 `python3 captcha_web.py` 重新登录。修改配置后运行 `docker compose -f compose.headless.yaml up -d` 应用变更。日志每份最多 10 MB，保留 2 份。`headless.toml` 和 `headless-data/` 已被 Git 忽略，请勿分享。
 
+更新客户端源码后，等待 GitHub Actions 镜像发布成功，再执行：
+
+```bash
+docker compose -f compose.headless.yaml pull
+docker compose -f compose.headless.yaml up -d
+```
+
+需要固定版本时，将 Compose 的镜像标签改为 GitHub Actions 对应的 `sha-完整提交哈希`。凭据和会话通过原路径挂载，更新镜像继续复用。
+
 ## 开发检查
 
 在项目根目录运行：
 
 ```bash
 python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v
+go test ./...
 ```
 
-测试验证 HTTP 服务、真实子进程输入、请求鉴权、坐标检查及过期和重复提交处理。本机原生客户端此前已完成真实密码登录、网页点选、HTTP/SOCKS5 访问、会话恢复和 60 秒保活验证，历史记录见项目开发日志。本次精简不修改登录代码；本机缺少 Docker 引擎，容器首次启动与服务器密码登录切换尚未验证。
+测试验证 HTTP 服务、真实子进程输入、请求鉴权、坐标检查及过期和重复提交处理。本机原生客户端此前已完成真实密码登录、网页点选、HTTP/SOCKS5 访问、会话恢复和 60 秒保活验证，历史记录见项目开发日志。GitHub Actions 负责验证源码测试、镜像构建和容器启动；服务器密码登录切换尚未执行。
