@@ -1,5 +1,17 @@
 # 进度
 
+## 官方 ZJU-Connect 对照登录（2026-11-20）
+
+- 用户最终明确目标为 HK-AK，已通过该 Termius 会话完成官方 `mythologyli/zju-connect:1.3.1` 的完整登录重试。
+- [x] 官方镜像已拉取，摘要 `sha256:6e14b16b979fd76a205b8da97d937574fedcd72f9dc2c99a435644778f1d6ed8`；`-version` 输出 `ZJU Connect v1.3.1`，退出 0。
+- [x] 官方容器 `hziee-zju-upstream-test` 已复用原配置启动 aTrust / auth/psw / ShenLan 登录，用户完成验证码提交。
+- 独立数据目录 `/opt/hziee-headless/upstream-test-data` 权限 700，日志 `upstream-login.log` 权限 600；只读挂载原配置。测试代理仅绑定 127.0.0.1:11081（SOCKS5）、18889（HTTP），旧容器保持 Up，未修改原 Compose。
+- 验证码网页使用现有 Python 脚本并指定独立图片路径；现有 HZIEE Captcha SSH 转发已连接，本机 HTTP 检查返回 200。随机令牌未写入 Git。
+- [x] 日志确认用户验证码重试后，于本地时间 21:52:01 获取并解析学校 clientResource，21:52:08 报 `VPN client setup error: no reachable node for ip request`；未出现 `VPN client started`，独立数据目录只有验证码图片，没有保存会话。
+- [x] 最终 docker ps -a 只显示旧容器 `hziee-vpn-atrust-1` 为 Up 3 hours；官方一次性容器已退出，测试端口 11081/18889 和网页 18081 均已释放，旧容器未停止，原配置与 Compose 未改动。
+- 官方和自建镜像在 HK-AK 均于节点探测阶段失败；此次未建立隧道，因此没有执行官方客户端的 HTTP/SOCKS5 校内请求与 60 秒保活检查，具体网络过滤或路由原因仍未确定。
+- [ ] 更新实际结果、开发记录并提交推送。
+
 ## 英国服务器网络对照（2026-11-20）
 
 - [x] 按用户截图指定的 Termius 会话 UK-Happa-GreenCloud 执行只读连接检查。

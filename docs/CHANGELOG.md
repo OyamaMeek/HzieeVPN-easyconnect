@@ -283,3 +283,22 @@
 - **Git 提交**：`c47003b docs: record UK server VPN node connectivity checks`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---
+
+## [2026-11-20 21:56] 在香港服务器使用官方 ZJU-Connect 重试登录
+
+- **需求/问题描述**：
+  > 改用官方 ZJU-Connect 再连接一次，用户明确指定 HK-AK。
+
+- **实际实现的功能与改动**：
+  - 实际拉取 `mythologyli/zju-connect:1.3.1`，摘要为 `sha256:6e14b16b979fd76a205b8da97d937574fedcd72f9dc2c99a435644778f1d6ed8`；容器 `-version` 输出 `ZJU Connect v1.3.1`，退出 0。
+  - 只读挂载现有学校配置，以独立目录保存测试数据，通过现有验证码网页启动官方客户端。测试 SOCKS5/HTTP 使用回环端口 11081/18889，旧容器保持运行；日志权限 600，数据目录权限 700。
+  - 用户提交验证码后，日志于本地时间 21:52:01 获取并解析学校 clientResource，21:52:08 报 `no reachable node for ip request` 并退出；未建立 VPN 隧道、未保存会话，与此前自建镜像失败阶段相同。
+  - 最终确认官方一次性容器退出，测试代理与网页端口释放，旧容器仍为 Up 3 hours。没有修改客户端代码、原配置、Compose、路由或防火墙；未建立隧道，因此未执行代理与分钟保活验证，未重复运行代码测试。
+
+- **涉及文件**：
+  - `memory/plan.md`、`memory/verify.md`、`memory/progress.md`、`memory/gotchas.md`、`docs/CHANGELOG.md`。
+  - 远程私密日志为 `/opt/hziee-headless/upstream-login.log`，测试数据位于同目录的 `upstream-test-data/`，未纳入 Git。
+
+- **Git 提交**：待提交官方客户端对照登录记录。
+
+---

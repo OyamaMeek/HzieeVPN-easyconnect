@@ -6,6 +6,7 @@
 - 历史脱敏只重写受影响提交区间，保留此前上游提交及签名；强制更新远端必须有明确授权并使用带预期旧哈希的 --force-with-lease。
 - 用户偏好直接操作已登录的 Termius 会话，优先复用该会话。
 - 用户所说的 hi-Al 指 Termius 中的 HK-AK；部署前按此名称核对目标。
+- 官方 ZJU-Connect 重试目标已由用户明确指定为 HK-AK；英国服务器只作为网络连通性对照，不沿用为登录或部署目标。
 - 选择客户端前确认实际认证方式；用户已补充门户直接密码登录条件，不能继续假设只能钉钉扫码。
 - EasyConnect CLI 不支持 aTrust；密码登录可使用 ZJU-Connect 的 aTrust 模式，先用 `-auth-info` 查询真实登录域，不猜测为 Radius。
 - 学校入口包含 aTrust 标识，应按 aTrust 部署，不能仅根据仓库名称选择 EasyConnect。
