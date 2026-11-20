@@ -1,3 +1,5 @@
 .env
 deploy/hziee/data/
+deploy/hziee/headless.toml
+deploy/hziee/headless-data/
 .agent/work/

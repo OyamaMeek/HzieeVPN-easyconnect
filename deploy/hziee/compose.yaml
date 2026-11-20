@@ -14,6 +14,8 @@ services:
       PASSWORD: ${VNC_PASSWORD:?Set VNC_PASSWORD in .env (max 8 characters)}
       URLWIN: "1"
       USE_NOVNC: "1"
+      PING_ADDR_URL: "http://10.130.10.75/"
+      PING_INTERVAL: "60"
     ports:
       - "127.0.0.1:5901:5901"
       - "127.0.0.1:8080:8080"

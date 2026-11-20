@@ -11,3 +11,21 @@
 已完成：服务器学校入口 HTTP 200，Compose 校验、拉取及启动成功；容器 running / restarts=0 / oom=false；5 个端口仅绑定本机；noVNC 服务器 HTTP 200，本机隧道可访问；用户已扫码进入工作台，utun7 和校内路由已建立。本机 HTTP 18888、SOCKS5 11080 的隧道均仅监听 127.0.0.1，两者访问学校入口均返回 302，curl 退出码 0。
 
 未完成：终端二维码输出、具体校内业务系统及长期稳定性验证。对单个已下发路由 IP 的 HTTP 请求未取得有效响应。当前登录采用客户端内嵌二维码，宿主 Mac 的 aTrustAgent 占用 54631 不影响该登录过程。
+
+## 每分钟访问校内地址的检查
+
+- 解析学校 Compose，确认 `PING_ADDR_URL` 为目标 HTTP 地址、`PING_INTERVAL` 为字符串 `60`。
+- 对实际使用的 `start.sh` 执行 `bash -n`，检查循环确实读取这两个环境变量。
+- 有 Docker 的环境执行 `docker compose config --quiet`，部署后检查容器内环境与请求结果。
+- 通过现有 HTTP 代理请求业务网址，按真实退出码记录可达性；配置通过不代表 VPN 已连通。
+- 确认本次无凭据入库，Git diff 无空白错误。
+
+## 无图形部署验证结果
+
+- 已通过：Docker Compose 5.8.0 解析两份 Compose；图形版仅以校验用 VNC 环境值展开，没有启动容器。
+- 已通过：Ruby YAML/JSON 断言确认 HTTP 地址、60 秒间隔、版本标签、本机端口、无特权配置和缺少配置文件时禁止创建目录的挂载选项。
+- 已通过：原 `start.sh` 的 `bash -n`、`git diff --check`、凭据与数据的忽略规则检查。
+- 已通过：本机 ZJU-Connect 1.3.1 读取最终 TOML 示例并实际执行学校 `-auth-info`，退出 0，确认 ShenLan / auth/psw；Docker Hub 返回 1.3.1 的 amd64、arm64 镜像状态 active。
+- 已核对：1.3.1 的容器入口和内置 HTTP 保活实现，HTTP GET 周期 60 秒、请求超时 10 秒，无需新循环脚本。
+- 未通过：现有本机 HTTP 代理访问目标 IP 超时，curl 退出 28。
+- 未执行：容器启动、真实密码登录及登录后保活验证；本机无 Docker 引擎，无真实账号密码，服务器未修改。

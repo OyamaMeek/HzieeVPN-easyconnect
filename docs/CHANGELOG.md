@@ -24,3 +24,29 @@
 - **Git 提交**：`98399010f24f1a7a6de1a680312c7a9995f50a95 feat: add private HZIEE aTrust deployment`，已普通推送到 origin/master。
 
 ---
+
+## [2026-11-20 12:59] 每分钟 HTTP 保活与账号密码无图形配置
+
+- **需求/问题描述**：
+  > 每分钟探测 http://10.130.10.75/，利用 VPN 门户直接账号密码登录，修改项目以支持无图形部署。
+
+- **实际实现的功能与改动**：
+  - 图形版复用现有 PING_ADDR_URL / PING_INTERVAL，每轮等待 60 秒执行 HTTP 探测。
+  - 新增独立 ZJU-Connect 1.3.1 Compose 与 TOML 示例，使用 aTrust auth/psw 和实际查询到的 ShenLan 登录域。
+  - 复用客户端内置 HTTP GET 保活：登录后立即请求，之后每 60 秒请求，超时 10 秒。
+  - 无图形版仅绑定本机 1080 / 8888，持久化会话，配置重启和日志轮换，忽略真实凭据及运行数据。
+  - 补充配置、首次交互登录、代理验证、后台运行与恢复图形版说明；服务器未切换。
+  - 两份 Compose 通过 5.8.0 config 校验；配置断言、bash -n、忽略规则及 diff 检查通过。
+  - 1.3.1 原生客户端解析示例并实际查询学校认证信息成功；Docker Hub 确认版本标签和 amd64 / arm64 镜像存在。
+  - 现有本机 HTTP 代理访问目标 10 秒超时，curl 退出 28。缺少真实凭据及本机容器引擎，未验证密码登录与实际分钟保活。
+
+- **涉及文件**：
+  - `.gitignore`
+  - `deploy/hziee/compose.yaml`、`deploy/hziee/compose.headless.yaml`
+  - `deploy/hziee/headless.toml.example`、`deploy/hziee/README.md`
+  - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`
+  - `docs/CHANGELOG.md`
+
+- **Git 提交**：待提交，配置和可执行的本机验证已完成。
+
+---

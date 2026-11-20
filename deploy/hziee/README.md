@@ -1,6 +1,57 @@
 # 杭电信工 aTrust 部署
 
-学校入口：<https://vpn.hziee.edu.cn>，采用钉钉扫码认证。
+学校入口：<https://vpn.hziee.edu.cn>，支持“上网账号(I-XG)”密码认证和钉钉扫码。
+
+## 无图形界面部署（账号密码）
+
+`compose.headless.yaml` 使用 ZJU-Connect 1.3.1 的 aTrust 协议实现，无需 VNC、浏览器、`NET_ADMIN` 或 TUN 设备。配置参考[客户端参数](https://github.com/Mythologyli/zju-connect/tree/v1.3.1)与[官方 Docker 用法](https://github.com/Mythologyli/zju-connect/blob/v1.3.1/docs/docker.md)。
+
+在本目录操作，先准备仅本机保存的配置文件；已有配置时不要重新复制：
+
+```bash
+cp -n headless.toml.example headless.toml
+chmod 600 headless.toml
+```
+
+在编辑器中填写 `headless.toml` 的 `username` 和 `password`。示例已设置学校入口、`auth/psw` 和 `ShenLan` 登录域；该登录域对应服务器实际返回的“上网账号(I-XG)”。若使用其他类型账号，先查询认证方式，再使用对应 `loginDomain`：
+
+```bash
+docker compose -f compose.headless.yaml config --quiet
+docker compose -f compose.headless.yaml run --rm vpn -auth-info
+```
+
+若同一服务器已运行图形版，先停止它以释放代理端口，再以前台交互模式完成首次登录：
+
+```bash
+docker compose -f compose.yaml stop atrust
+docker compose -f compose.headless.yaml run --rm --service-ports -it vpn
+```
+
+新安装无需执行停止图形版的命令。客户端若提示图形验证码或短信验证码，按终端提示完成验证；验证码图片保存在 `headless-data/captcha.png`。首次登录成功后，用另一终端验证内网地址：
+
+```bash
+curl --noproxy '' --proxy http://127.0.0.1:8888 --max-time 15 http://10.130.10.75/
+```
+
+然后按 `Ctrl+C` 结束前台容器，启动后台服务：
+
+```bash
+docker compose -f compose.headless.yaml up -d
+docker compose -f compose.headless.yaml logs --tail=50 -f vpn
+```
+
+登录后客户端立即向 `http://10.130.10.75/` 发送 HTTP GET，之后每 60 秒执行一次，单次请求最多 10 秒；日志会记录响应状态。HTTP 错误状态仍表示已收到响应，需结合实际状态码确认业务可用。会话保存在 `headless-data/`，容器配置自动重启和日志轮换。
+
+仅开放 `127.0.0.1:1080`（SOCKS5）与 `127.0.0.1:8888`（HTTP），可继续使用现有 Termius 代理转发。`headless.toml` 和 `headless-data/` 已加入 Git 忽略规则；不要提交或分享凭据和会话数据。
+
+恢复图形版时执行，原有 `.env` 和 `data/` 保留：
+
+```bash
+docker compose -f compose.headless.yaml stop vpn
+docker compose -f compose.yaml up -d atrust
+```
+
+本次仅增加项目配置，服务器尚未切换；尚未使用真实账号验证登录和校内访问。
 
 ## HK-AK 当前部署
 
@@ -52,6 +103,8 @@ curl --proxy http://127.0.0.1:18888 https://vpn.hziee.edu.cn
 
 ## 运维
 
+以下命令适用于图形版；无图形版需加 `-f compose.headless.yaml`。
+
 在服务器执行：
 
 ```bash
@@ -63,6 +116,8 @@ docker compose restart
 ```
 
 日志已限制为每份 10 MB、最多 2 份。不要把 `.env` 或 `data/` 提交到 Git。
+
+图形版配置也已设置 `PING_ADDR_URL=http://10.130.10.75/`、`PING_INTERVAL=60`，复用现有 HTTP 探测。每轮等待 60 秒后探测，单次最多 10 秒。将本次更新后的 `compose.yaml` 放入部署目录，再运行 `docker compose up -d atrust` 才会应用新的环境变量；`restart` 不会应用配置变更。
 
 ## 验证记录
 
@@ -80,3 +135,12 @@ docker compose restart
 - 启动日志存在 D-Bus、aTrustShell.conf 权限和 bsod_checker.js 异常；本次已完成认证及 VPN 接口建立，长期稳定性未验证。
 - 具体校内业务系统尚未验证；对一条已下发路由中的 IP 发起 HTTP 请求未取得有效响应。
 - 终端二维码输出未完成；本次扫码在图形界面完成。
+
+本次项目配置检查：
+
+- 两份 Compose 均通过 Docker Compose 5.8.0 的 `config --quiet`；图形版校验使用临时环境值，仅验证配置展开，未启动容器。
+- 配置断言、原启动脚本 `bash -n` 和 `git diff --check` 通过；凭据、会话和验证工具均被 Git 忽略。
+- Docker Hub 确认 `mythologyli/zju-connect:1.3.1` 的 Linux amd64、arm64 镜像存在。
+- ZJU-Connect 1.3.1 成功解析 `headless.toml.example`，并通过 `-auth-info` 实际查询学校服务器，退出码 0；“上网账号(I-XG)”返回 `loginDomain=ShenLan`、`authType=auth/psw`。
+- 本机通过现有 HTTP 18888 代理访问 `http://10.130.10.75/`，10 秒无响应，curl 退出码 28。
+- 未取得真实账号密码，尚未验证无图形登录和登录后的分钟保活。

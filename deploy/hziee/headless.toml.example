@@ -1,0 +1,12 @@
+protocol = "atrust"
+server_address = "vpn.hziee.edu.cn"
+server_port = 443
+username = ""
+password = ""
+auth_type = "auth/psw"
+login_domain = "ShenLan"
+socks_bind = ":1080"
+http_bind = ":8888"
+client_data_file = "/home/nonroot/data/client_data.json"
+graph_code_file = "/home/nonroot/data/captcha.png"
+keep_alive_url = "http://10.130.10.75/"
