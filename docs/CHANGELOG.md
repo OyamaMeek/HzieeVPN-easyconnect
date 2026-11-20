@@ -92,6 +92,6 @@
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`
   - `docs/CHANGELOG.md`
 
-- **Git 提交**：待提交。
+- **Git 提交**：`2bdbd9cc7a8eb46af50a6399fab4634af560174a docs: rename project to HzieeVPN-easyconnect`，已普通推送到新仓库 origin/master。
 
 ---
