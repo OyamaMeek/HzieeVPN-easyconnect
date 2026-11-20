@@ -114,6 +114,6 @@
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`
   - `docs/CHANGELOG.md`
 
-- **Git 提交**：待提交。用户已明确批准当前 76 个文件的精简并推送；重新执行 4 项检查、配置 SHA-256 校验及 `git diff --check` 均通过。
+- **Git 提交**：`90d4b110ea857499c1f4172684dd8cdbe30f242b refactor: retain only HZIEE VPN deployment paths`，已按用户确认的范围普通推送到 origin/master。
 
 ---
