@@ -184,3 +184,24 @@
 - **Git 提交**：`c9f4984847ee8321c62ad1d8cd1a648c55d0ff71 fix: restore complete Docker image build sources`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---
+
+## [2026-11-20 18:05] 仅保留信工 VPN 密码登录与验证码网页
+
+- **需求/问题描述**：
+  > 只保留账号密码登录信工 VPN 的部分和验证码网页，删除其他无关组件。
+
+- **实际实现的功能与改动**：
+  - 保留学校密码登录 Compose、TOML 示例、验证码 Python/HTML 与原有测试；代码、配置、本地凭据和会话均保持原样。
+  - 删除 78 个无关文件：扫码 Compose、通用 EasyConnect、四份 Dockerfile、构建参数与脚本、容器启动文件、C 辅助库、GitHub 工作流、通用示例与文档、失去用途的 `.dockerignore`。
+  - 首页与部署说明仅描述密码登录、验证码、SSH 转发、代理和运维；精简当前 memory，保留许可证与历史开发记录，增加系统文件和 Python 缓存忽略规则。
+  - 精简检查清理前 4 项中 2 项失败，清理后 4 项全部通过；保留文件与本地配置 SHA-256、Compose 完整 JSON 与基线一致。10 项 HTTP/真实子进程管道测试、Compose 配置、JavaScript 语法和 diff 检查全部通过。
+  - 本机缺少 Docker 引擎，未验证容器启动或重新登录；未操作服务器、执行视觉检查或删除本地备份。恢复点为 `b789008`。
+
+- **涉及文件**：
+  - 删除 `.github/`、`Dockerfile*`、`build-args/`、`build-scripts/`、`docker-root/`、`docker-root-preinst/`、`fake-getlogin/`、`fake-hwaddr/`、`doc/`。
+  - 删除 `.dockerignore`、`docker-compose.yml`、`macos_example.sh`、`pkg_version.xml`、`deploy/hziee/compose.yaml`。
+  - 更新 `README.md`、`deploy/hziee/README.md`、`.gitignore`、`memory/` 五份记录、`docs/CHANGELOG.md`。
+
+- **Git 提交**：待提交；完成后通过后续文档提交补记实际哈希。
+
+---
