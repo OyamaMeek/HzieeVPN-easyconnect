@@ -47,6 +47,6 @@
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`
   - `docs/CHANGELOG.md`
 
-- **Git 提交**：待提交，配置和可执行的本机验证已完成。
+- **Git 提交**：`b8ad85a653edba253ea4d925065f44784f4cab05 feat: add headless HZIEE login and minute HTTP keepalive`，已普通推送到 origin/master。
 
 ---
