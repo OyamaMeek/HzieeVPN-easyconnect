@@ -11,4 +11,4 @@
 - 本机没有 Docker 引擎，验证工具下载至已忽略的 `.agent/work/`。
 - 用户已在被忽略的 `deploy/hziee/headless.toml` 填写真实凭据；测试只让客户端读取，不输出凭据。配置文件权限已收紧为 600。
 - 验证码网页：Python 3.9+ 标准库脚本 `deploy/hziee/captcha_web.py`，仅绑定 127.0.0.1:18081；网页自动向客户端 stdin 提交点选 JSON，默认启动现有 Compose 前台容器。
-- 官方 aTrust 二维码：用户要求复用 `hagb/docker-atrust` 的 `hziee-vpn-atrust-1`（资源版本 2.5.16.20）。组件 `69eea0c` 位于原根目录数据挂载的 `.atrust-qr/`，官方入口包装原主文件，备份在 `/opt/hziee-atrust-qr`；认证与隧道继续由官方客户端处理。`atrust-qr.service` 仅转发回环 28081，复用 Termius `HZIEE DingTalk` SSH 转发，原 1080/8888 代理保留。用户扫码后官方接口确认 online，utun7 已启用、有地址；校内 HTTP/SOCKS5 请求仍为空响应，两台学校节点 10441 TCP 检查超时，访问和保活未通过。此前 `/opt/hziee-dingtalk` 的 Go 扫码容器已停止。
+- 官方 aTrust 二维码：用户要求复用 `hagb/docker-atrust` 的 `hziee-vpn-atrust-1`（资源版本 2.5.16.20）。组件 `69eea0c` 位于原根目录数据挂载的 `.atrust-qr/`，官方入口包装原主文件，备份在 `/opt/hziee-atrust-qr`；认证与隧道继续由官方客户端处理。`atrust-qr.service` 仅转发回环 28081，复用 Termius `HZIEE DingTalk` SSH 转发，原 1080/8888 代理保留。23:06 复核原容器、恢复转发，初始状态 logout；重启原容器后网页取得真实二维码，终端已输出轮换后的链接，页面保留供本人扫码。本轮未确认登录，之前校内访问和保活未通过。此前 `/opt/hziee-dingtalk` 的 Go 扫码容器已停止。
