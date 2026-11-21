@@ -4,7 +4,7 @@ After=docker.service
 Requires=docker.service
 
 [Service]
-ExecStart=/usr/bin/socat TCP4-LISTEN:28081,bind=127.0.0.1,reuseaddr,fork "EXEC:/usr/bin/docker exec -i hziee-vpn-atrust-1 /usr/bin/socat STDIO TCP4:127.0.0.1:28081"
+ExecStart=/usr/bin/socat TCP4-LISTEN:28081,bind=127.0.0.1,reuseaddr,fork "EXEC:/usr/bin/docker exec -i hziee-vpn-atrust-1 /usr/bin/socat STDIO TCP4\\:127.0.0.1\\:28081"
 Restart=on-failure
 RestartSec=3
 

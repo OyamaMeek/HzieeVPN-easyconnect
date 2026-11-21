@@ -418,6 +418,23 @@
   - `deploy/hziee/atrust_qr.cjs`、`atrust_qr_entry.cjs`、`atrust_qr.html`、`atrust-qr.service`、`test_atrust_qr.cjs`。
   - `.github/workflows/build-image.yml`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`。
 
+- **Git 提交**：`1115f32310b3e2d4cfc0dfeb31a18dc8bf2d7d79 feat: read QR codes from official aTrust client`，已普通推送。
+
+---
+
+## [2026-11-21 17:55] 修正官方客户端入口和回环转发参数
+
+- **需求/问题描述**：
+  > 官方 aTrust 二维码组件首次部署后未启动。
+
+- **实际实现的功能与改动**：
+  - 首次组件提交的 Actions `44891373966` 测试与镜像任务成功，服务器文件校验和与本地一致；官方客户端运行，但包清单指定的新入口未生效，未生成组件访问令牌。
+  - 调整包装入口为加载备份的原客户端主文件；修正 socat 嵌套 TCP 地址的冒号转义。
+  - 本地边界测试与语法检查通过；真实加载与二维码读取继续验证，尚未宣称完成。
+
+- **涉及文件**：
+  - `deploy/hziee/atrust_qr_entry.cjs`、`deploy/hziee/atrust-qr.service`、`memory/progress.md`。
+
 - **Git 提交**：待提交。
 
 ---
