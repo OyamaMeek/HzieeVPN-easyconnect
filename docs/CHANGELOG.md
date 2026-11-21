@@ -432,12 +432,14 @@
   - 调整包装入口为加载备份的原客户端主文件；修正 socat 嵌套 TCP 地址的冒号转义。
   - 实际入口接入后，服务器与本机网页 HTTP 200，鉴权状态返回官方 `logout` 和客户端页面；刷新操作接入原客户端登录窗口并选择钉钉，二维码仍待实际读取。
   - 后续实际读取到官方客户端中的 `qrcode.html` 与钉钉 `oauth2/challenge.htm` 二维码，连续三次 `hasQR=true`。过期后真实刷新接口返回 `refreshed=false`，检查原生页面发现可见刷新控件位于过期遮罩内；调整为选择可见控件，并过滤已过期的钉钉二维码。
-  - 修复后应用内浏览器显示真实客户端二维码；过期后点击刷新并等待图片的检查仍超时。将刷新改为仅在官方 logout 状态重新打开原客户端登录窗口，由官方流程重建二维码，待再次验证。
-  - 本地边界测试与语法检查通过；真实加载与二维码读取继续验证，尚未宣称完成。
+  - 修复后应用内浏览器显示真实客户端二维码；过期后点击刷新并等待图片的检查仍超时。将刷新改为仅在官方 logout 状态重新打开原客户端登录窗口，由官方流程重建二维码。
+  - 更新后按用户“重新获取”实际点击网页刷新，10.8 秒内重新显示官方客户端二维码图片。服务器与本机网页 HTTP 200，systemd 单元校验及回环转发通过；入口仅监听宿主机回环地址，原客户端配置和数据保留。
+  - Node 边界与语法检查通过；[Actions 44892973042](https://github.com/OyamaMeek/HzieeVPN-easyconnect/actions/runs/44892973042) 的 test/image 均成功。本人扫码、登录、隧道、代理与保活尚未确认；未使用 VNC 或二维码截图。
 
 - **涉及文件**：
-  - `deploy/hziee/atrust_qr_entry.cjs`、`deploy/hziee/atrust-qr.service`、`memory/progress.md`。
+  - `deploy/hziee/atrust_qr.cjs`、`deploy/hziee/atrust_qr_entry.cjs`、`deploy/hziee/atrust-qr.service`。
+  - `README.md`、`deploy/hziee/README.md`、`memory/agents.md`、`memory/progress.md`、`memory/verify.md`。
 
-- **Git 提交**：`9af9adb fix: load QR bridge from aTrust client entry`，已普通推送；后续交互调整待提交。
+- **Git 提交**：`9af9adb fix: load QR bridge from aTrust client entry`、`efb5753 fix: open native DingTalk login from QR page`、`c77ddad fix: inspect native login frame locations`、`d426731 fix: refresh expired native DingTalk QR codes`、`69eea0c2bf336415b5eedbe8ec6ac2961dea036c fix: recreate native login window for QR refresh`，均已普通推送。部署记录通过后续文档提交保存。
 
 ---

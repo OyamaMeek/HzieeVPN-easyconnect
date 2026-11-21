@@ -1,8 +1,8 @@
 # HzieeVPN-easyconnect
 
-杭州电子科技大学信息工程学院的 aTrust VPN，支持账号密码与验证码网页，以及无需 VNC 的钉钉扫码网页。学校入口：<https://vpn.hziee.edu.cn>。
+杭州电子科技大学信息工程学院 VPN。当前服务器使用官方 aTrust 客户端，钉钉二维码通过独立网页展示，不使用 VNC；认证与隧道由官方客户端处理。学校入口：<https://vpn.hziee.edu.cn>。
 
-本仓库包含从 ZJU-Connect 克隆的完整客户端源码，默认以学校“上网账号(I-XG)”登录。GitHub Actions 编译并发布学校镜像 `ghcr.io/oyamameek/hzieevpn-easyconnect:latest`，部署使用本仓库构建结果。完整操作见[部署说明](deploy/hziee/README.md)，上游版本与许可证见[源码来源](SOURCE.md)。
+官方客户端二维码入口及运维见[部署说明](deploy/hziee/README.md#官方-atrust-客户端二维码)。本仓库也包含从 ZJU-Connect 克隆的客户端源码，默认以学校“上网账号(I-XG)”登录；GitHub Actions 编译发布 `ghcr.io/oyamameek/hzieevpn-easyconnect:latest`。源码版本与许可证见[源码来源](SOURCE.md)。
 
 ## 编译镜像
 
@@ -20,7 +20,7 @@ docker build -t hziee-vpn:local .
 
 ## 首次登录
 
-钉钉扫码使用独立的 `compose.dingtalk.yaml`，扫码网页端口为 `28081`，操作见[钉钉扫码网页](deploy/hziee/README.md#钉钉扫码网页)。以下为账号密码登录。
+官方 aTrust 的扫码网页使用 `28081`，操作见[官方客户端二维码](deploy/hziee/README.md#官方-atrust-客户端二维码)。以下为独立 Go 客户端的账号密码登录。
 
 准备 Docker、Docker Compose 和 Python 3.9 或更新版本，在项目目录执行；已有配置文件时保留原文件：
 

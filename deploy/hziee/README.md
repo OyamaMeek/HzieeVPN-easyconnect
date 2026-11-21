@@ -1,8 +1,42 @@
 # 杭电信工 VPN 登录
 
-学校入口：<https://vpn.hziee.edu.cn>。使用“上网账号(I-XG)”密码认证，验证码在本机浏览器点选。客户端源码保存在本仓库，由 GitHub Actions 编译发布为 `ghcr.io/oyamameek/hzieevpn-easyconnect:latest`。源码版本和许可证见[源码来源](../../SOURCE.md)。
+学校入口：<https://vpn.hziee.edu.cn>。当前 HK-AK 使用官方 aTrust 客户端及独立二维码网页；下文另保留 Go 客户端的部署说明。源码版本和许可证见[源码来源](../../SOURCE.md)。
 
-## 钉钉扫码网页
+## 官方 aTrust 客户端二维码
+
+当前容器为 `hziee-vpn-atrust-1`，镜像为 `hagb/docker-atrust`，已检查的客户端资源版本为 2.5.16.20。`atrust_qr.cjs` 在原 Electron 界面进程读取当前钉钉二维码，`atrust_qr.html` 只展示二维码及客户端状态。网页没有另起学校认证会话，扫码回调、登录和 VPN 隧道继续由官方客户端处理。
+
+网页仅监听服务器 `127.0.0.1:28081`；`atrust-qr.service` 通过 Docker 转发到客户端容器的回环端口。Termius 中的 `HZIEE DingTalk` 转发本机 28081 到服务器同名端口。获取本轮访问链接：
+
+```bash
+printf 'http://127.0.0.1:28081/#'
+cat /opt/hziee-vpn/data/.atrust-qr/token
+printf '\n'
+```
+
+保留完整链接中的随机令牌，不要分享或写入公开日志。网页点击“刷新客户端二维码”会在官方客户端中打开钉钉登录或刷新过期二维码。用钉钉扫码并在手机确认后，网页显示客户端状态变化；VPN 连通性需要另外验证。原客户端代理仍使用服务器回环 1080/8888，原有 Termius 代理转发保持不变。
+
+组件文件位于 `/opt/hziee-vpn/data/.atrust-qr/`。原主文件备份为 `/opt/hziee-atrust-qr/main.js.before-qr`，客户端内备份为 `src/main.before-qr.js`；`src/main.js` 使用本仓库包装入口调用原主文件，包清单保持原内容。部署文件位于 `/opt/hziee-atrust-qr`。日常检查：
+
+```bash
+systemctl status atrust-qr.service --no-pager
+docker inspect -f '{{.State.Status}}' hziee-vpn-atrust-1
+curl --fail http://127.0.0.1:28081/ --output /dev/null
+```
+
+重启官方客户端会轮换访问令牌，需重新获取链接。重新创建容器或升级官方客户端后，需要重新检查并接入组件。恢复原客户端入口时，使用已保存的备份：
+
+```bash
+systemctl stop atrust-qr.service
+docker cp /opt/hziee-atrust-qr/main.js.before-qr hziee-vpn-atrust-1:/usr/share/sangfor/aTrust/resources/app/src/main.js
+docker restart hziee-vpn-atrust-1
+```
+
+当前已实际从官方客户端读取钉钉二维码并显示到独立网页；登录、隧道、代理与保活仍需本人扫码后逐项验证。二维码页面不提供 VNC 或远程桌面。
+
+## 独立 Go 客户端钉钉扫码
+
+该部署当前已停止，官方客户端使用上一节入口。
 
 `compose.dingtalk.yaml` 使用本仓库无图形客户端和学校的 `auth/dingtalk` 认证，不需要 VNC、桌面环境或账号密码。网页使用学校配置中的钉钉临时授权码接口，扫码确认后由服务器向钉钉兑换学校回调，并继续完成学校认证。
 
