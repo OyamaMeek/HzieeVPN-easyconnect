@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>aTrust 客户端 · 钉钉扫码</title>
+<style>
+body{font:16px system-ui,sans-serif;background:#f5f5f5;color:#202124;margin:0;padding:32px 16px}main{max-width:420px;margin:5vh auto;background:white;border-radius:16px;padding:28px;text-align:center}h1{font-size:24px}img{display:block;width:260px;height:260px;max-width:100%;margin:20px auto;image-rendering:pixelated}p{line-height:1.6}button{font:inherit;padding:10px 18px;border:0;border-radius:8px;background:#1769d2;color:white;cursor:pointer}button:disabled{opacity:.5}small{display:block;color:#666;margin-top:24px}
+</style>
+<style>img[hidden]{display:none}</style>
+<main>
+<h1>aTrust 客户端扫码</h1>
+<p>使用钉钉扫码，并在手机确认登录。</p>
+<img id="qr" alt="官方 aTrust 客户端当前钉钉二维码" hidden>
+<p id="status" role="status">正在读取官方 aTrust 客户端…</p>
+<button id="refresh">刷新客户端二维码</button>
+<small>认证与 VPN 连接由服务器上的官方 aTrust 客户端处理。请勿分享完整链接。</small>
+</main>
+<script>
+const token=location.hash.slice(1), message=document.getElementById('status'), image=document.getElementById('qr'), button=document.getElementById('refresh');
+let timer, pending=false;
+async function update(refresh=false){
+  if(pending)return;
+  pending=true;button.disabled=true;
+  try{
+    const response=await fetch(refresh?'/refresh':'/status',{method:refresh?'POST':'GET',headers:{Authorization:'Bearer '+token}});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||'读取失败');
+    image.hidden=!data.image;
+    if(data.image){image.src=data.image;message.textContent='这是官方 aTrust 客户端当前的二维码，请使用钉钉扫码。';}
+    else if(['online','login','offline','disconnect'].includes(data.status)){message.textContent='aTrust 客户端状态：'+data.status+'。登录状态已变化，VPN 连通性仍需检查。';clearInterval(timer);}
+    else message.textContent='官方 aTrust 尚未显示二维码，正在等待客户端钉钉登录页面。';
+  }catch(error){image.hidden=true;message.textContent=error.message;}
+  finally{pending=false;button.disabled=false;}
+}
+button.addEventListener('click',()=>update(true));
+window.addEventListener('hashchange',()=>location.reload());
+timer=setInterval(()=>update(),3000);update();
+</script>
+</html>

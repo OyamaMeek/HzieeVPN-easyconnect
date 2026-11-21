@@ -402,3 +402,22 @@
 - **Git 提交**：`f3a61a5d59966fb7a139f68ee636a649f4420ad1 fix: normalize HTTPS origin in portal redirects`，已普通推送至 origin/master；部署结果通过后续文档提交保存。
 
 ---
+
+## [2026-11-21 17:48] 接入官方 aTrust 客户端二维码读取
+
+- **需求/问题描述**：
+  > 用户要求使用官方 aTrust 客户端，网页只展示客户端二维码，不使用 VNC。
+
+- **实际实现的功能与改动**：
+  - 停止独立 Go 扫码容器；官方 aTrust 原容器保持运行，本地 HTTPS 状态接口实际返回 `code=0`、`status=logout`。
+  - 增加在官方 Electron 界面进程中读取钉钉二维码的组件、独立展示网页与回环端口转发单元。认证仍由官方客户端处理，组件不兑换授权码、不替换学校认证。
+  - 三项来源、令牌及图片数据边界测试先因缺失组件失败，新增组件后通过；JavaScript 语法检查通过。真实官方客户端接入及二维码读取尚待部署验证。
+  - REA 调用首次被自动审批拒绝；用户明确同意后，对已复制的五份客户端脚本完成静态分析，不将其当作认证或运行成功证据。
+
+- **涉及文件**：
+  - `deploy/hziee/atrust_qr.cjs`、`atrust_qr_entry.cjs`、`atrust_qr.html`、`atrust-qr.service`、`test_atrust_qr.cjs`。
+  - `.github/workflows/build-image.yml`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`。
+
+- **Git 提交**：待提交。
+
+---

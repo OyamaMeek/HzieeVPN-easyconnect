@@ -31,8 +31,8 @@ jobs:
         run: go test -mod=readonly ./...
       - name: Test captcha web
         run: python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v
-      - name: Test DingTalk message validation
-        run: node --test deploy/hziee/test_dingtalk_message.mjs
+      - name: Test QR login boundaries
+        run: node --test deploy/hziee/test_dingtalk_message.mjs deploy/hziee/test_atrust_qr.cjs
       - name: Validate deployment config
         run: |
           docker compose -f deploy/hziee/compose.headless.yaml config --quiet
