@@ -41,13 +41,6 @@ const readQR = `(() => {
   return null;
 })()`;
 
-const refreshQR = `(() => {
-  const elements = document.querySelectorAll('#cover .message-container, #recreate_qrcode, #refreashQrCodeBtn, .module-qrcode-expired-new-action, .module-qrcode-expired-cover');
-  const element = Array.from(elements).find(e => e.getClientRects().length);
-  if (element) { element.click(); return true; }
-  return false;
-})()`;
-
 const selectDingTalk = `(() => {
   const elements = Array.from(document.querySelectorAll('button,a,[role="button"],span,div')).reverse();
   const element = elements.find(e => e.getClientRects().length && ['钉钉','钉钉登录','钉钉扫码登录'].includes(e.textContent.trim()));
@@ -55,7 +48,7 @@ const selectDingTalk = `(() => {
   return false;
 })()`;
 
-async function inspectWindow(contents, refresh, select) {
+async function inspectWindow(contents, select) {
   const debuggerClient = contents.debugger;
   if (!debuggerClient.isAttached()) debuggerClient.attach('1.3');
   const tree = await debuggerClient.sendCommand('Page.getFrameTree');
@@ -66,7 +59,6 @@ async function inspectWindow(contents, refresh, select) {
   }
   collect(tree.frameTree);
   let image = null;
-  let refreshed = false;
   for (const frame of frames) {
     const world = await debuggerClient.sendCommand('Page.createIsolatedWorld', { frameId: frame.id, worldName: 'atrust-qr-reader' });
     if (select && new URL(frame.url).hostname !== 'login.dingtalk.com') {
@@ -76,13 +68,12 @@ async function inspectWindow(contents, refresh, select) {
       if (selected.exceptionDetails) throw new Error('无法打开客户端钉钉登录');
     }
     const result = await debuggerClient.sendCommand('Runtime.evaluate', {
-      expression: refresh ? refreshQR : readQR, contextId: world.executionContextId, returnByValue: true, timeout: 3000,
+      expression: readQR, contextId: world.executionContextId, returnByValue: true, timeout: 3000,
     });
     if (result.exceptionDetails) throw new Error('无法读取官方客户端二维码');
-    if (refresh) refreshed = refreshed || result.result.value === true;
-    else image = qrData(result.result.value) || image;
+    image = qrData(result.result.value) || image;
   }
-  return { image, refreshed, frames: frames.map(frame => {
+  return { image, frames: frames.map(frame => {
     const url = new URL(frame.url);
     return url.protocol === 'file:' ? url.pathname : url.origin + url.pathname;
   }) };
@@ -115,10 +106,11 @@ function start(electron, appConfig, mainWindow) {
     busy = true;
     try {
       const status = appConfig.getLoginStatus();
-      const result = { status, image: null, frames: [], sources: [], refreshed: false };
+      const result = { status, image: null, frames: [], sources: [] };
       if (status === 'logout') {
         if (refresh) {
           selectUntil = Date.now() + 60000;
+          mainWindow.closeMainWindow();
           mainWindow.showLoginPagePreCheck('https://vpn.hziee.edu.cn', false, false, true);
         }
         for (const contents of electron.webContents.getAllWebContents()) {
@@ -126,10 +118,9 @@ function start(electron, appConfig, mainWindow) {
           const source = new URL(contents.getURL() || 'about:blank');
           result.sources.push(source.protocol === 'file:' ? source.pathname : source.origin + source.pathname);
           if (!trustedFrame(contents.getURL())) continue;
-          const current = await inspectWindow(contents, refresh, Date.now() < selectUntil);
+          const current = await inspectWindow(contents, Date.now() < selectUntil);
           result.image = current.image || result.image;
           result.frames.push(...current.frames);
-          result.refreshed = result.refreshed || current.refreshed;
         }
         if (result.image) selectUntil = 0;
       }
