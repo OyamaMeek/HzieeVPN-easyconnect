@@ -107,6 +107,7 @@ func (s *Session) authConfig(mod, needTicket bool) (int, []AuthInfo, error) {
 	s.pubKey = re.Data.PubKey
 	s.pubKeyExp = re.Data.PubKeyExp
 	s.antiReplayRand = re.Data.AntiReplayRand
+	s.response["authConfig"] = append(json.RawMessage(nil), body...)
 
 	return re.Data.IsLogin, re.Data.AuthServerInfoList, nil
 }

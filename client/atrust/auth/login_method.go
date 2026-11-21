@@ -11,6 +11,7 @@ type LoginMethodOptions struct {
 	GraphCodeFile string
 	CASTicket     string
 	OAuth2Code    string
+	DingTalkBind  string
 }
 
 func NewLoginMethod(options LoginMethodOptions) (LoginMethod, error) {
@@ -42,6 +43,8 @@ func NewLoginMethod(options LoginMethodOptions) (LoginMethod, error) {
 			Domain: options.Domain,
 			Code:   options.OAuth2Code,
 		}, nil
+	case "auth/dingtalk":
+		return DingTalkLogin{Domain: options.Domain, Bind: options.DingTalkBind}, nil
 	case "auth/smsCheckCode":
 		return SMSLogin{
 			Phone:         options.Phone,

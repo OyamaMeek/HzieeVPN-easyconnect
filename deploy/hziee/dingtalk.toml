@@ -1,0 +1,10 @@
+protocol = "atrust"
+server_address = "vpn.hziee.edu.cn"
+server_port = 443
+auth_type = "auth/dingtalk"
+login_domain = "dingtalk"
+dingtalk_bind = ":28081"
+socks_bind = ":1080"
+http_bind = ":8888"
+client_data_file = "/home/nonroot/data/client_data.json"
+keep_alive_url = "http://10.130.10.75/"

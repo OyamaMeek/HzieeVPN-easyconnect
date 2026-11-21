@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>学校 VPN · 钉钉扫码</title>
+<style>
+body{margin:0;background:#f6f7f8;color:#20252b;font:16px/1.6 system-ui,sans-serif}
+main{max-width:420px;margin:8vh auto;padding:28px;text-align:center}
+h1{font-size:24px}iframe{width:300px;height:320px;border:0;background:white;border-radius:12px}
+button{padding:10px 22px;border:1px solid #bbb;border-radius:8px;background:white;cursor:pointer;font:inherit}
+button:disabled{opacity:.5;cursor:wait}p{overflow-wrap:anywhere}.muted{color:#59636e;font-size:14px}
+</style>
+<main>
+<h1>钉钉扫码登录</h1>
+<p class="muted">使用钉钉扫描二维码，并在手机上确认登录。</p>
+<div id="qr"></div>
+<p id="status" role="status" aria-live="polite">正在加载二维码…</p>
+<button id="refresh" type="button">刷新二维码</button>
+<p class="muted">扫码结果仅交给当前服务器的 VPN 客户端。<br>请勿分享本页完整链接。</p>
+</main>
+<script>
+const token=location.hash.slice(1),status=document.getElementById('status'),qr=document.getElementById('qr'),button=document.getElementById('refresh');
+let frame,expires=0,submitting=false,finished=false;
+async function request(path,method='GET',body){
+ const response=await fetch(path,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store'});
+ if(!response.ok)throw new Error(await response.text());
+ return response.json();
+}
+async function load(refresh=false){
+ button.disabled=true;qr.replaceChildren();expires=0;
+ try{
+  const data=await request(refresh?'/api/refresh':'/api/config',refresh?'POST':'GET');
+  frame=document.createElement('iframe');frame.title='钉钉登录二维码';frame.referrerPolicy='no-referrer';frame.src=data.frameUrl;qr.replaceChildren(frame);expires=data.expiresAt;
+  status.textContent='请使用钉钉扫码。';
+ }catch(error){status.textContent=error.message;}finally{button.disabled=false;}
+}
+button.addEventListener('click',()=>load(true));
+window.addEventListener('message',async event=>{
+ if(event.origin!=='https://login.dingtalk.com'||!frame||event.source!==frame.contentWindow||finished||submitting)return;
+ const data=event.data;
+ if(!data||typeof data!=='object')return;
+ if(!data.success||typeof data.redirectUrl!=='string'){if(data.errorMsg)status.textContent='扫码未完成，请刷新二维码后重试。';return;}
+ if(Date.now()>=expires){status.textContent='二维码已过期，请刷新后重新扫码。';return;}
+ submitting=true;button.disabled=true;status.textContent='正在提交学校认证，请稍候…';
+ try{const result=await request('/api/submit','POST',{redirectUrl:data.redirectUrl});finished=true;expires=0;qr.replaceChildren();status.textContent=result.message;}
+ catch(error){status.textContent=error.message;}finally{submitting=false;button.disabled=finished;}
+});
+setInterval(()=>{if(!expires||submitting||finished)return;const seconds=Math.ceil((expires-Date.now())/1000);if(seconds<=0){qr.replaceChildren();frame=null;expires=0;status.textContent='二维码已过期，请点击刷新二维码。';}else status.textContent='请使用钉钉扫码，二维码约 '+seconds+' 秒后过期。';},1000);
+if(token)load();else{status.textContent='请使用服务器终端输出的完整链接打开本页。';button.disabled=true;}
+</script>
+</html>

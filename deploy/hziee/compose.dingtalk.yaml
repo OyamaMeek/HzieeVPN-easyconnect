@@ -1,0 +1,22 @@
+name: hziee-dingtalk
+services:
+  vpn:
+    image: ghcr.io/oyamameek/hzieevpn-easyconnect:latest
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./dingtalk.toml
+        target: /home/nonroot/config.toml
+        read_only: true
+        bind:
+          create_host_path: false
+      - ./dingtalk-data:/home/nonroot/data
+    ports:
+      - "127.0.0.1:28081:28081"
+      - "127.0.0.1:11081:1080"
+      - "127.0.0.1:18889:8888"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"

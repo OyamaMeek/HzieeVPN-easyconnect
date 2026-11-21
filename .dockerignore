@@ -9,6 +9,7 @@
 **/*.log
 deploy/hziee/headless.toml
 deploy/hziee/headless-data
+deploy/hziee/dingtalk-data
 deploy/hziee/data
 bin
 memory

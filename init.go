@@ -130,6 +130,7 @@ func newFlagSet(defaults configs.Config) *pflag.FlagSet {
 	flags.String("client-data-file", defaults.ClientDataFile, "aTrust Client Data File")
 	flags.String("cas-ticket", defaults.CasTicket, "aTrust CAS Ticket")
 	flags.String("oauth2-code", defaults.OAuth2Code, "aTrust OAuth2 code")
+	flags.String("dingtalk-bind", defaults.DingTalkBind, "DingTalk login page address (default 127.0.0.1:28081)")
 	flags.String("sid", defaults.SID, "aTrust SID")
 	flags.String("device-id", defaults.DeviceID, "aTrust Device ID")
 	flags.String("sign-key", defaults.SignKey, "aTrust Sign Key")

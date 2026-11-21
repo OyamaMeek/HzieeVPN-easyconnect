@@ -67,6 +67,11 @@ func TestNewLoginMethodTruthTable(t *testing.T) {
 			want: HTTPSOauth2Login{Domain: "domain", Code: "code"},
 		},
 		{
+			name:    "explicit DingTalk",
+			options: LoginMethodOptions{AuthType: "auth/dingtalk", Domain: "dingtalk"},
+			want:    DingTalkLogin{Domain: "dingtalk"},
+		},
+		{
 			name: "explicit SMS",
 			options: LoginMethodOptions{
 				AuthType: "auth/smsCheckCode", Phone: "13800000000", Domain: "domain", GraphCodeFile: "graph-code.txt",

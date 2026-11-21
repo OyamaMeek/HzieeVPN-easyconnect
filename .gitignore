@@ -2,6 +2,7 @@
 deploy/hziee/data/
 deploy/hziee/headless.toml
 deploy/hziee/headless-data/
+deploy/hziee/dingtalk-data/
 .agent/work/
 .DS_Store
 __pycache__/

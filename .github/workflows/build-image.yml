@@ -30,7 +30,9 @@ jobs:
       - name: Test captcha web
         run: python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v
       - name: Validate deployment config
-        run: docker compose -f deploy/hziee/compose.headless.yaml config --quiet
+        run: |
+          docker compose -f deploy/hziee/compose.headless.yaml config --quiet
+          docker compose -f deploy/hziee/compose.dingtalk.yaml config --quiet
 
   image:
     needs: test

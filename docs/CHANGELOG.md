@@ -337,3 +337,24 @@
 - **Git 提交**：`9bce64a docs: record DingTalk login and HK tunnel verification`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---
+
+## [2026-11-21 14:05] 独立钉钉扫码网页
+
+- **需求/问题描述**：
+  > 不使用 VNC，将钉钉二维码提供到网页，并选择一个高位端口。
+
+- **实际实现的功能与改动**：
+  - 在现有 Go 客户端增加学校 `auth/dingtalk` 新版扫码认证，网页默认使用 28081，复用原认证会话、VPN、代理与保活流程。
+  - 网页直接内嵌钉钉二维码，提供过期提示和刷新；校验访问令牌、Host、Origin、扫码来源窗口、回调地址与会话 state，拒绝跨会话及过期提交。扫码认证完成后关闭临时网页，不将扫码通过标记为隧道已连接。
+  - 增加独立 Compose 和公开配置，网页与代理端口仅映射回环地址；使用独立、被忽略的会话目录。保留原账号密码和服务器部署。
+  - 新登录类型测试先确认旧代码报不支持认证；新增请求边界测试发现并修正缺少结果代码、尾随 JSON 的校验缺口。补测后 Go 全部测试与 Go vet 通过；10 项验证码 Python 测试、原生/Linux amd64/arm64 编译、JavaScript 语法及两份 Compose 校验通过。服务器部署结果后续补记。
+  - 本机真实获取学校扫码配置，浏览器加载钉钉二维码 iframe 和 canvas，刷新返回新的 60 秒有效期；未替用户扫码、未执行截图或声明隧道连接成功。
+
+- **涉及文件**：
+  - `client/atrust/auth/dingtalk.go`、`dingtalk.html`、`dingtalk_test.go`、`login_method.go`、`login_method_test.go`、`request.go`。
+  - `configs/config.go`、`main.go`、`init.go`、`deploy/hziee/compose.dingtalk.yaml`、`deploy/hziee/dingtalk.toml`。
+  - `.github/workflows/build-image.yml`、`.gitignore`、`.dockerignore`、`README.md`、`deploy/hziee/README.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`。
+
+- **Git 提交**：待提交。
+
+---

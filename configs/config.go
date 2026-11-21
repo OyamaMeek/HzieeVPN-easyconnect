@@ -54,6 +54,7 @@ type Config struct {
 	ClientDataFile          string `koanf:"client_data_file"`
 	CasTicket               string `koanf:"cas_ticket"`
 	OAuth2Code              string `koanf:"oauth2_code"`
+	DingTalkBind            string `koanf:"dingtalk_bind"`
 	SID                     string `koanf:"sid"`
 	DeviceID                string `koanf:"device_id"`
 	SignKey                 string `koanf:"sign_key"`

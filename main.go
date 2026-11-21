@@ -156,6 +156,7 @@ func main() {
 				GraphCodeFile: conf.GraphCodeFile,
 				CASTicket:     conf.CasTicket,
 				OAuth2Code:    conf.OAuth2Code,
+				DingTalkBind:  conf.DingTalkBind,
 			})
 			if err != nil {
 				log.Fatalf("Configure aTrust login: %v", err)

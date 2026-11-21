@@ -1,6 +1,36 @@
-# 杭电信工 VPN 账号密码登录
+# 杭电信工 VPN 登录
 
 学校入口：<https://vpn.hziee.edu.cn>。使用“上网账号(I-XG)”密码认证，验证码在本机浏览器点选。客户端源码保存在本仓库，由 GitHub Actions 编译发布为 `ghcr.io/oyamameek/hzieevpn-easyconnect:latest`。源码版本和许可证见[源码来源](../../SOURCE.md)。
+
+## 钉钉扫码网页
+
+`compose.dingtalk.yaml` 使用本仓库无图形客户端和学校的 `auth/dingtalk` 认证，不需要 VNC、桌面环境或账号密码。学校当前启用钉钉新版扫码接口；不支持旧版钉钉扫码配置。
+
+在本目录执行：
+
+```bash
+docker compose -f compose.dingtalk.yaml config --quiet
+docker compose -f compose.dingtalk.yaml pull
+docker compose -f compose.dingtalk.yaml up -d
+docker compose -f compose.dingtalk.yaml logs --tail=30 -f vpn
+```
+
+网页仅映射到宿主机 `127.0.0.1:28081`。在本机建立 SSH 本地转发，也可以在 Termius 中保存相同规则：
+
+```bash
+ssh -N -L 127.0.0.1:28081:127.0.0.1:28081 root@example.com
+```
+
+`example.com` 是占位符，替换为自己的服务器地址与 SSH 用户名。打开日志中 `DingTalk login page:` 后的完整链接，保留 `#` 后的随机访问令牌。二维码由钉钉直接提供；使用钉钉扫码并在手机确认。过期后点击“刷新二维码”。网页最多等待 10 分钟；超时后容器按重启策略重新启动，链接令牌随之变化，请重新读取日志。登录认证完成后网页服务关闭，后续认证和 VPN 连接结果以客户端日志为准。
+
+SOCKS5 使用宿主机 `127.0.0.1:11081`，HTTP 使用 `127.0.0.1:18889`，会话保存在 `dingtalk-data/`；与原有 1080/8888 服务使用不同端口和会话目录。登录后验证：
+
+```bash
+curl --noproxy '' --proxy http://127.0.0.1:18889 --max-time 15 http://10.130.10.75/
+curl --noproxy '' --socks5-hostname 127.0.0.1:11081 --max-time 15 http://10.130.10.75/
+```
+
+重启、停止或更新此服务时，对上述命令继续使用 `-f compose.dingtalk.yaml`。认证会话有效时客户端自动恢复，无需重新扫码。原生运行时设置 `-auth-type auth/dingtalk -login-domain dingtalk`；网页默认绑定 `127.0.0.1:28081`，可通过 `dingtalk_bind` 或 `-dingtalk-bind` 指定监听地址。Compose 内部绑定 `:28081`，由宿主机端口映射限制本机访问。不要将会话目录或完整登录链接公开。
 
 ## 准备与首次登录
 
