@@ -29,6 +29,8 @@ function qrData(value) {
 
 const readQR = `(() => {
   if (location.hostname !== 'login.dingtalk.com') return null;
+  const expired = document.querySelector('.module-qrcode-expired-cover,.module-qrcode-expired-new-cover,.factor-onlineDevice-expired-cover,.edu-qrCode-expired-cover');
+  if (expired && expired.getClientRects().length) return null;
   const square = e => e.width >= 120 && e.width <= 800 && Math.abs(e.width - e.height) < 8;
   for (const image of document.images) {
     if (square(image) && image.src.startsWith('data:image/png;base64,')) return image.src;
@@ -40,8 +42,9 @@ const readQR = `(() => {
 })()`;
 
 const refreshQR = `(() => {
-  const element = document.querySelector('#recreate_qrcode, #refreashQrCodeBtn');
-  if (element && element.getClientRects().length) { element.click(); return true; }
+  const elements = document.querySelectorAll('#cover .message-container, #recreate_qrcode, #refreashQrCodeBtn, .module-qrcode-expired-new-action, .module-qrcode-expired-cover');
+  const element = Array.from(elements).find(e => e.getClientRects().length);
+  if (element) { element.click(); return true; }
   return false;
 })()`;
 
