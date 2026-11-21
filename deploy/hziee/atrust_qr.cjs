@@ -45,7 +45,14 @@ const refreshQR = `(() => {
   return false;
 })()`;
 
-async function inspectWindow(contents, refresh) {
+const selectDingTalk = `(() => {
+  const elements = Array.from(document.querySelectorAll('button,a,[role="button"],span,div')).reverse();
+  const element = elements.find(e => e.getClientRects().length && ['钉钉','钉钉登录','钉钉扫码登录'].includes(e.textContent.trim()));
+  if (element) { element.click(); return true; }
+  return false;
+})()`;
+
+async function inspectWindow(contents, refresh, select) {
   const debuggerClient = contents.debugger;
   if (!debuggerClient.isAttached()) debuggerClient.attach('1.3');
   const tree = await debuggerClient.sendCommand('Page.getFrameTree');
@@ -59,6 +66,12 @@ async function inspectWindow(contents, refresh) {
   let refreshed = false;
   for (const frame of frames) {
     const world = await debuggerClient.sendCommand('Page.createIsolatedWorld', { frameId: frame.id, worldName: 'atrust-qr-reader' });
+    if (select && new URL(frame.url).hostname !== 'login.dingtalk.com') {
+      const selected = await debuggerClient.sendCommand('Runtime.evaluate', {
+        expression: selectDingTalk, contextId: world.executionContextId, returnByValue: true, timeout: 3000,
+      });
+      if (selected.exceptionDetails) throw new Error('无法打开客户端钉钉登录');
+    }
     const result = await debuggerClient.sendCommand('Runtime.evaluate', {
       expression: refresh ? refreshQR : readQR, contextId: world.executionContextId, returnByValue: true, timeout: 3000,
     });
@@ -72,11 +85,12 @@ async function inspectWindow(contents, refresh) {
   }) };
 }
 
-function start(electron, appConfig) {
+function start(electron, appConfig, mainWindow) {
   const tokenPath = path.join(__dirname, 'token');
   const token = crypto.randomBytes(32).toString('hex');
   fs.writeFileSync(tokenPath, token, { mode: 0o600 });
   let busy = false;
+  let selectUntil = 0;
   const server = http.createServer(async (request, response) => {
     const headers = {
       'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer',
@@ -100,13 +114,18 @@ function start(electron, appConfig) {
       const status = appConfig.getLoginStatus();
       const result = { status, image: null, frames: [], refreshed: false };
       if (status === 'logout') {
+        if (refresh) {
+          selectUntil = Date.now() + 15000;
+          mainWindow.showLoginPagePreCheck('https://vpn.hziee.edu.cn', false, false, true);
+        }
         for (const contents of electron.webContents.getAllWebContents()) {
           if (contents.isDestroyed() || !trustedFrame(contents.getURL())) continue;
-          const current = await inspectWindow(contents, refresh);
+          const current = await inspectWindow(contents, refresh, Date.now() < selectUntil);
           result.image = current.image || result.image;
           result.frames.push(...current.frames);
           result.refreshed = result.refreshed || current.refreshed;
         }
+        if (result.image) selectUntil = 0;
       }
       send(200, result);
     } catch (error) {
