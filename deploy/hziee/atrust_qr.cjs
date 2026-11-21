@@ -81,7 +81,7 @@ async function inspectWindow(contents, refresh, select) {
   }
   return { image, refreshed, frames: frames.map(frame => {
     const url = new URL(frame.url);
-    return url.protocol === 'file:' ? 'aTrust client' : url.origin + url.pathname;
+    return url.protocol === 'file:' ? url.pathname : url.origin + url.pathname;
   }) };
 }
 
@@ -112,14 +112,17 @@ function start(electron, appConfig, mainWindow) {
     busy = true;
     try {
       const status = appConfig.getLoginStatus();
-      const result = { status, image: null, frames: [], refreshed: false };
+      const result = { status, image: null, frames: [], sources: [], refreshed: false };
       if (status === 'logout') {
         if (refresh) {
-          selectUntil = Date.now() + 15000;
+          selectUntil = Date.now() + 60000;
           mainWindow.showLoginPagePreCheck('https://vpn.hziee.edu.cn', false, false, true);
         }
         for (const contents of electron.webContents.getAllWebContents()) {
-          if (contents.isDestroyed() || !trustedFrame(contents.getURL())) continue;
+          if (contents.isDestroyed()) continue;
+          const source = new URL(contents.getURL() || 'about:blank');
+          result.sources.push(source.protocol === 'file:' ? source.pathname : source.origin + source.pathname);
+          if (!trustedFrame(contents.getURL())) continue;
           const current = await inspectWindow(contents, refresh, Date.now() < selectUntil);
           result.image = current.image || result.image;
           result.frames.push(...current.frames);
