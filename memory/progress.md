@@ -3,12 +3,16 @@
 ## 独立钉钉扫码网页（2026-11-21）
 
 - [x] 用户选择不使用 VNC 的二维码网页；HK-AK 的 28081 无监听。
-- [x] 实际查询学校认证信息，钉钉使用 `auth/dingtalk`，取码入口为 `/passport/v1/public/dingtalkGetcode`，当前 Go 登录工厂尚未支持。
+- [x] 实际查询学校认证信息，钉钉使用 `auth/dingtalk`；Go 客户端已接入学校新版钉钉扫码配置及回调。
 - [x] 核对官方 `qrcode.html`、`scan_common.js` 与钉钉 SDK；实现独立网页及新版扫码回调接入，不使用 VNC。
 - [x] 本机实际取得学校扫码配置，浏览器加载钉钉 iframe，页面含二维码 canvas；刷新后实际获得 60 秒有效期。未执行截图或用户扫码确认。
 - [x] 新登录类型测试先确认旧工厂拒绝 `auth/dingtalk`；安全边界补测后 Go 全部测试与 Go vet 通过。10 项 Python 测试、原生/Linux amd64/arm64 编译、JavaScript 语法及两份 Compose 校验通过。
-- [ ] 完成相关测试和 HK-AK 部署，记录实际登录及隧道验证结果。
-- [ ] 脱敏检查、提交、普通推送与补记。
+- [x] 功能随 `072786709e346ce5f629a04c9cd663ab8c37b7f5 feat: add headless DingTalk QR login page` 普通推送；GitHub Actions `44874060686` 的 test/image 均成功。
+- [x] HK-AK `/opt/hziee-dingtalk` 已部署，源码版本输出 `hziee-072786709e346ce5f629a04c9cd663ab8c37b7f5`。Compose 与 TOML 的 SHA-256 和本地一致；目录和数据权限 700、配置权限 600。
+- [x] 新容器 running、重启计数 0；网页和代理仅监听回环 28081/11081/18889。原容器 running、重启计数 0，配置与会话保留。
+- [x] Termius 保存并连接 `HZIEE DingTalk` 本地转发；远程网页、本机转发网页和带令牌配置接口均为 HTTP 200。浏览器使用服务器真实配置加载钉钉 iframe，点击刷新后取得有效二维码配置。
+- [ ] 等待用户本人在钉钉扫码确认，再验证学校回调、VPN 隧道、代理请求与分钟保活；当前没有宣称这些项目通过。
+- 镜像摘要为 `sha256:903be76106df0bcf0ab2ffd352920b213a3155cd3437c15c7d7620b3a8198da0`。完整访问令牌仅保留在私密日志与浏览器，不写入 Git。
 
 ## HK-AK 钉钉扫码重试（2026-11-21）
 

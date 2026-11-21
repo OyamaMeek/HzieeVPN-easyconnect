@@ -347,14 +347,18 @@
   - 在现有 Go 客户端增加学校 `auth/dingtalk` 新版扫码认证，网页默认使用 28081，复用原认证会话、VPN、代理与保活流程。
   - 网页直接内嵌钉钉二维码，提供过期提示和刷新；校验访问令牌、Host、Origin、扫码来源窗口、回调地址与会话 state，拒绝跨会话及过期提交。扫码认证完成后关闭临时网页，不将扫码通过标记为隧道已连接。
   - 增加独立 Compose 和公开配置，网页与代理端口仅映射回环地址；使用独立、被忽略的会话目录。保留原账号密码和服务器部署。
-  - 新登录类型测试先确认旧代码报不支持认证；新增请求边界测试发现并修正缺少结果代码、尾随 JSON 的校验缺口。补测后 Go 全部测试与 Go vet 通过；10 项验证码 Python 测试、原生/Linux amd64/arm64 编译、JavaScript 语法及两份 Compose 校验通过。服务器部署结果后续补记。
+  - 新登录类型测试先确认旧代码报不支持认证；新增请求边界测试发现并修正缺少结果代码、尾随 JSON 的校验缺口。补测后 Go 全部测试与 Go vet 通过；10 项验证码 Python 测试、原生/Linux amd64/arm64 编译、JavaScript 语法及两份 Compose 校验通过。
   - 本机真实获取学校扫码配置，浏览器加载钉钉二维码 iframe 和 canvas，刷新返回新的 60 秒有效期；未替用户扫码、未执行截图或声明隧道连接成功。
+  - [GitHub Actions 44874060686](https://github.com/OyamaMeek/HzieeVPN-easyconnect/actions/runs/44874060686) 的 test/image 均成功。HK-AK 实际拉取并运行新镜像，版本为源码提交 `0727867`，摘要 `sha256:903be76106df0bcf0ab2ffd352920b213a3155cd3437c15c7d7620b3a8198da0`。
+  - 部署目录 `/opt/hziee-dingtalk`，两份配置校验和与本地一致，目录及数据权限 700、配置权限 600。新容器 running、重启 0，仅映射回环 28081/11081/18889；原容器保持 running、重启 0，配置与会话保留。
+  - Termius `HZIEE DingTalk` 转发已保存并连接，远程和本机网页 HTTP 200、鉴权配置 HTTP 200，浏览器实际从服务器加载并刷新钉钉二维码 iframe。等待用户本人扫码，学校回调、隧道和代理与保活尚未验证；完整令牌不写入公开记录。
 
 - **涉及文件**：
   - `client/atrust/auth/dingtalk.go`、`dingtalk.html`、`dingtalk_test.go`、`login_method.go`、`login_method_test.go`、`request.go`。
   - `configs/config.go`、`main.go`、`init.go`、`deploy/hziee/compose.dingtalk.yaml`、`deploy/hziee/dingtalk.toml`。
   - `.github/workflows/build-image.yml`、`.gitignore`、`.dockerignore`、`README.md`、`deploy/hziee/README.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`。
+  - `memory/agents.md`；远程新增独立 `/opt/hziee-dingtalk` 部署，不含账号密码。
 
-- **Git 提交**：待提交。
+- **Git 提交**：`072786709e346ce5f629a04c9cd663ab8c37b7f5 feat: add headless DingTalk QR login page`，已普通推送至 origin/master；部署结果与本记录通过后续文档提交保存。
 
 ---

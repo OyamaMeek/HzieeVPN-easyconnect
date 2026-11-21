@@ -11,3 +11,4 @@
 - 本机没有 Docker 引擎，验证工具下载至已忽略的 `.agent/work/`。
 - 用户已在被忽略的 `deploy/hziee/headless.toml` 填写真实凭据；测试只让客户端读取，不输出凭据。配置文件权限已收紧为 600。
 - 验证码网页：Python 3.9+ 标准库脚本 `deploy/hziee/captcha_web.py`，仅绑定 127.0.0.1:18081；网页自动向客户端 stdin 提交点选 JSON，默认启动现有 Compose 前台容器。
+- 钉钉独立网页：Go 客户端原生支持学校 `auth/dingtalk` 新版接口，无 VNC 依赖；HK-AK 的 `/opt/hziee-dingtalk` 已部署 `hziee-dingtalk-vpn-1`。网页、SOCKS5、HTTP 分别仅映射 127.0.0.1:28081、11081、18889，数据目录权限 700、配置权限 600。Termius `HZIEE DingTalk` 转发本地 28081 到同名远程端口；浏览器已实际加载并刷新扫码页，等待本人扫码，未验证回调及隧道。
