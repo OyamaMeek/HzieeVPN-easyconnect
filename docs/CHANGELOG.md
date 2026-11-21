@@ -393,11 +393,12 @@
   - 实际日志确认两次收到临时码，完成钉钉兑换，随后学校返回 302，客户端在票据跳转解析阶段拒绝；未确认隧道连接成功。
   - 回归测试先确认共享解析器会错误拒绝显式和省略 443 的相同 HTTPS 来源。复用标准 URL 解析与有效端口比较，保留不同来源、端口和路径拒绝。
   - 学校跳转失败时仅记录协议、主机、路径、是否含 data 和校验原因；移除该共享解析器中原有的完整跳转与票据调试输出。
-  - 相关及 Go 全部测试、Go vet 和消息来源检查通过；镜像更新及真实学校跳转结果后续记录。当前尚未取得此前失败跳转的原始结构，不把默认端口缺陷写作已证实的实际跳转原因。
+  - 相关及 Go 全部测试、Go vet 和消息来源检查通过；[GitHub Actions 44876942487](https://github.com/OyamaMeek/HzieeVPN-easyconnect/actions/runs/44876942487) 的 test/image 均成功。
+  - HK-AK 已拉取并运行修复镜像，版本实际输出 `f3a61a5`，网页 HTTP 200。应用内浏览器已更新访问链接并加载真实钉钉二维码，等待用户再次扫码核对学校票据与后续隧道。当前尚未取得此前失败跳转的原始结构，不把默认端口缺陷写作已证实的实际跳转原因。
 
 - **涉及文件**：
   - `client/atrust/auth/request.go`、`dingtalk.go`、`redirect_test.go`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`。
 
-- **Git 提交**：待提交。
+- **Git 提交**：`f3a61a5d59966fb7a139f68ee636a649f4420ad1 fix: normalize HTTPS origin in portal redirects`，已普通推送至 origin/master；部署结果通过后续文档提交保存。
 
 ---
