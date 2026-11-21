@@ -316,6 +316,6 @@
 - **涉及文件**：
   - `memory/progress.md`、`docs/CHANGELOG.md`。
 
-- **Git 提交**：待提交本次复测记录。
+- **Git 提交**：`f9ff1d0 docs: record next-day HK VPN connectivity retest`，已普通推送至 origin/master；本记录通过后续文档提交补记。
 
 ---
