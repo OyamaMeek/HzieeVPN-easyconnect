@@ -480,3 +480,20 @@
 - **Git 提交**：`9bbaa51 docs: record restored official aTrust QR entry`，已普通推送；提交信息通过后续文档提交补记。
 
 ---
+
+## [2026-11-21 23:15] 测试官方容器的校内 HTTP 保活请求
+
+- **需求/问题描述**：
+  > 测试通过 VPS 的官方容器代理请求校内保活地址能否成功。
+
+- **实际实现的功能与改动**：
+  - 实际通过 VPS 回环 8888 HTTP 代理发送 GET，显式禁用 NO_PROXY 绕过，连接超时 5 秒、总超时 10 秒。
+  - curl 返回 Empty reply from server，退出码 52；HTTP 000、0 字节、耗时 0.045432 秒。请求未成功，未配置定时保活。
+  - 本轮没有修改客户端、配置、会话或服务器设置；只更新脱敏记录，未重复运行代码测试。文档执行 git diff --check。
+
+- **涉及文件**：
+  - `memory/progress.md`、`memory/verify.md`、`docs/CHANGELOG.md`。
+
+- **Git 提交**：待提交。
+
+---
