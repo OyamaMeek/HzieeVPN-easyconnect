@@ -443,3 +443,22 @@
 - **Git 提交**：`9af9adb fix: load QR bridge from aTrust client entry`、`efb5753 fix: open native DingTalk login from QR page`、`c77ddad fix: inspect native login frame locations`、`d426731 fix: refresh expired native DingTalk QR codes`、`69eea0c2bf336415b5eedbe8ec6ac2961dea036c fix: recreate native login window for QR refresh`，均已普通推送。部署记录通过后续文档提交保存。
 
 ---
+
+## [2026-11-21 18:17] 检查官方 aTrust 扫码登录与连通性
+
+- **需求/问题描述**：
+  > 用户扫码后要求检查实际结果。
+
+- **实际实现的功能与改动**：
+  - 应用内网页显示 online，独立查询官方本地 HTTPS 状态接口返回 code=0、status=online，确认官方客户端扫码登录成功。
+  - 容器 running、重启 0；utun7 具有 UP/LOWER_UP、有地址，校内测试目标的实际路由使用 utun7。
+  - HTTP 和 SOCKS5 访问校内测试目标均为空响应，HTTP 000、0 字节，curl 退出 52；耗时分别约 0.061 秒与 0.043 秒。
+  - 两台学校节点的 10441 TCP 各检查 5 秒，均超时，退出 124。具体访问失败原因未确定，未执行成功连接后的分钟保活。
+  - 本轮为只读运行检查，未重启客户端、退出登录或修改服务器配置；未使用 VNC，未执行二维码截图。
+
+- **涉及文件**：
+  - `memory/agents.md`、`memory/progress.md`、`memory/verify.md`、`deploy/hziee/README.md`、`docs/CHANGELOG.md`。
+
+- **Git 提交**：待提交。
+
+---

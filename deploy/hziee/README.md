@@ -32,7 +32,7 @@ docker cp /opt/hziee-atrust-qr/main.js.before-qr hziee-vpn-atrust-1:/usr/share/s
 docker restart hziee-vpn-atrust-1
 ```
 
-当前已实际从官方客户端读取钉钉二维码并显示到独立网页；登录、隧道、代理与保活仍需本人扫码后逐项验证。二维码页面不提供 VNC 或远程桌面。
+当前已实际从官方客户端读取钉钉二维码并显示到独立网页；本人扫码后官方接口确认 online，utun7 已启用且有地址，校内目标路由使用该接口。但校内 HTTP/SOCKS5 请求仍为空响应，两台学校数据节点 10441 TCP 检查超时；实际校内访问与保活尚未通过。二维码页面不提供 VNC 或远程桌面。
 
 ## 独立 Go 客户端钉钉扫码
 
