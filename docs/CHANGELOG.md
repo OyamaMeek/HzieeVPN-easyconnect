@@ -477,6 +477,6 @@
 - **涉及文件**：
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`deploy/hziee/README.md`、`docs/CHANGELOG.md`。
 
-- **Git 提交**：待提交。
+- **Git 提交**：`9bbaa51 docs: record restored official aTrust QR entry`，已普通推送；提交信息通过后续文档提交补记。
 
 ---
