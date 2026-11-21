@@ -104,7 +104,7 @@ func readDingTalkConfig(body []byte, domain, baseHost string) (dingTalkConfig, t
 		config := item.Config
 		callback, err := url.Parse(config.RedirectURI)
 		base, baseErr := url.Parse("https://" + baseHost)
-		if err != nil || baseErr != nil || !sameDingTalkEndpoint(callback, base) || callback.Path != "/passport/v1/auth/dingtalk" || callback.Query().Get("sfDomain") != domain {
+		if err != nil || baseErr != nil || !sameHTTPSOrigin(callback, base) || callback.Path != "/passport/v1/auth/dingtalk" || callback.Query().Get("sfDomain") != domain {
 			return dingTalkConfig{}, 0, fmt.Errorf("invalid DingTalk callback endpoint")
 		}
 		if config.AppID == "" || config.RequireURL != "https://oapi.dingtalk.com/connect/oauth2/sns_authorize" || config.ResponseType != "code" || config.Scope != "snsapi_login" || config.State == "" || item.Timeout < 1 || item.Timeout > 600 {
@@ -113,19 +113,6 @@ func readDingTalkConfig(body []byte, domain, baseHost string) (dingTalkConfig, t
 		return config, time.Duration(item.Timeout) * time.Second, nil
 	}
 	return dingTalkConfig{}, 0, fmt.Errorf("DingTalk login domain not found")
-}
-
-func sameDingTalkEndpoint(a, b *url.URL) bool {
-	if a.Scheme != "https" || a.User != nil || a.Fragment != "" || !strings.EqualFold(a.Hostname(), b.Hostname()) {
-		return false
-	}
-	port := func(u *url.URL) string {
-		if u.Port() == "" {
-			return "443"
-		}
-		return u.Port()
-	}
-	return port(a) == port(b)
 }
 
 func (c dingTalkConfig) frameURL() string {
@@ -145,7 +132,7 @@ func (c dingTalkConfig) authorizationURL(temporaryCode string) string {
 func (c dingTalkConfig) callbackURL(raw string) (string, error) {
 	callback, err := url.Parse(raw)
 	expected, _ := url.Parse(c.RedirectURI)
-	if err != nil || len(raw) > 8192 || !sameDingTalkEndpoint(callback, expected) || callback.Path != expected.Path {
+	if err != nil || len(raw) > 8192 || !sameHTTPSOrigin(callback, expected) || callback.Path != expected.Path {
 		return "", fmt.Errorf("扫码回调地址无效，请刷新二维码重试。")
 	}
 	query := callback.Query()
@@ -324,6 +311,11 @@ func (s *Session) completeDingTalk(callback string) error {
 	if response.StatusCode == http.StatusFound {
 		ticket, err := parsePortalTicketFromRedirect(response.Header.Get("Location"), s.baseHost)
 		if err != nil {
+			if location, parseErr := url.Parse(response.Header.Get("Location")); parseErr == nil {
+				log.Printf("DingTalk portal redirect rejected: %s (scheme=%q host=%q path=%q hasData=%t)", err, location.Scheme, location.Host, location.Path, location.Query().Get("data") != "")
+			} else {
+				log.Println("DingTalk portal redirect rejected: malformed URL")
+			}
 			return fmt.Errorf("学校认证跳转无效，请查看客户端日志。")
 		}
 		s.ticket = ticket

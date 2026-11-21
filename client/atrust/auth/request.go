@@ -682,16 +682,29 @@ func (s *Session) checkCode() ([]byte, error) {
 	return body, nil
 }
 
+func sameHTTPSOrigin(a, b *url.URL) bool {
+	if a.Scheme != "https" || a.User != nil || a.Fragment != "" || !strings.EqualFold(a.Hostname(), b.Hostname()) {
+		return false
+	}
+	port := func(u *url.URL) string {
+		if u.Port() == "" {
+			return "443"
+		}
+		return u.Port()
+	}
+	return port(a) == port(b)
+}
+
 func parsePortalTicketFromRedirect(redirectLocation, baseHost string) (string, error) {
 	redirectURL, err := url.Parse(redirectLocation)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("invalid redirect url")
 	}
-	log.DebugPrintf("Received redirect: %s", redirectURL.String())
 	if redirectURL.Scheme != "https" {
 		return "", fmt.Errorf("invalid redirect url: scheme not https")
 	}
-	if redirectURL.Host != baseHost {
+	baseURL, err := url.Parse("https://" + baseHost)
+	if err != nil || !sameHTTPSOrigin(redirectURL, baseURL) {
 		return "", fmt.Errorf("invalid redirect url: host not match")
 	}
 	if redirectURL.Path != "/portal/shortcut.html" {
@@ -706,9 +719,8 @@ func parsePortalTicketFromRedirect(redirectLocation, baseHost string) (string, e
 		Ticket string `json:"ticket"`
 	}
 	if err := json.Unmarshal([]byte(queries.Get("data")), &tk); err != nil {
-		return "", err
+		return "", fmt.Errorf("invalid portal data")
 	}
-	log.DebugPrintf("Parsed portal data: %+v", tk)
 	if tk.Ticket == "" {
 		return "", fmt.Errorf("invalid portal data: ticket not found")
 	}
