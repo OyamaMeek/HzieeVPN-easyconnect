@@ -22,6 +22,9 @@ import (
 //go:embed dingtalk.html
 var dingTalkPage string
 
+//go:embed dingtalk_message.mjs
+var dingTalkMessageScript string
+
 type DingTalkLogin struct {
 	Domain string
 	Bind   string
@@ -45,7 +48,7 @@ func (m DingTalkLogin) login(s *Session, _ AuthInfo) error {
 	}
 	_, web.port, _ = net.SplitHostPort(listener.Addr().String())
 	server := &http.Server{Handler: web, ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second,
+		ReadTimeout: 10 * time.Second, WriteTimeout: 50 * time.Second,
 		IdleTimeout: 30 * time.Second, MaxHeaderBytes: 8192}
 	defer server.Close()
 	defer func() {
@@ -69,11 +72,12 @@ func (m DingTalkLogin) login(s *Session, _ AuthInfo) error {
 }
 
 type dingTalkConfig struct {
-	SupportNewAPI int    `json:"supportNewAPI"`
-	AppKey        string `json:"appKey"`
-	CorpID        string `json:"corpId"`
-	State         string `json:"state"`
-	RedirectURI   string `json:"redirect_uri"`
+	AppID        string `json:"appid"`
+	RequireURL   string `json:"require_url"`
+	ResponseType string `json:"response_type"`
+	Scope        string `json:"scope"`
+	State        string `json:"state"`
+	RedirectURI  string `json:"redirect_uri"`
 }
 
 func readDingTalkConfig(body []byte, domain, baseHost string) (dingTalkConfig, time.Duration, error) {
@@ -103,8 +107,8 @@ func readDingTalkConfig(body []byte, domain, baseHost string) (dingTalkConfig, t
 		if err != nil || baseErr != nil || !sameDingTalkEndpoint(callback, base) || callback.Path != "/passport/v1/auth/dingtalk" || callback.Query().Get("sfDomain") != domain {
 			return dingTalkConfig{}, 0, fmt.Errorf("invalid DingTalk callback endpoint")
 		}
-		if config.SupportNewAPI != 1 || config.AppKey == "" || config.CorpID == "" || config.State == "" || item.Timeout < 1 || item.Timeout > 600 {
-			return dingTalkConfig{}, 0, fmt.Errorf("DingTalk QR configuration is incomplete or does not support the current login API")
+		if config.AppID == "" || config.RequireURL != "https://oapi.dingtalk.com/connect/oauth2/sns_authorize" || config.ResponseType != "code" || config.Scope != "snsapi_login" || config.State == "" || item.Timeout < 1 || item.Timeout > 600 {
+			return dingTalkConfig{}, 0, fmt.Errorf("DingTalk temporary-code configuration is incomplete or unsupported")
 		}
 		return config, time.Duration(item.Timeout) * time.Second, nil
 	}
@@ -125,10 +129,17 @@ func sameDingTalkEndpoint(a, b *url.URL) bool {
 }
 
 func (c dingTalkConfig) frameURL() string {
-	query := url.Values{"iframe": {"true"}, "redirect_uri": {c.RedirectURI},
-		"response_type": {"code"}, "client_id": {c.AppKey}, "scope": {"openid corpid"},
-		"state": {c.State}, "corpId": {c.CorpID}, "prompt": {"consent"}}
-	return "https://login.dingtalk.com/oauth2/auth?" + query.Encode()
+	query := url.Values{"goto": {c.authorizationURL("")}, "style": {"background-color:#fff;border:0;margin:0;"}}
+	return "https://login.dingtalk.com/login/qrcode.htm?" + query.Encode()
+}
+
+func (c dingTalkConfig) authorizationURL(temporaryCode string) string {
+	query := url.Values{"appid": {c.AppID}, "response_type": {c.ResponseType},
+		"scope": {c.Scope}, "state": {c.State}, "redirect_uri": {c.RedirectURI}}
+	if temporaryCode != "" {
+		query.Set("loginTmpCode", temporaryCode)
+	}
+	return c.RequireURL + "?" + query.Encode()
 }
 
 func (c dingTalkConfig) callbackURL(raw string) (string, error) {
@@ -138,7 +149,7 @@ func (c dingTalkConfig) callbackURL(raw string) (string, error) {
 		return "", fmt.Errorf("扫码回调地址无效，请刷新二维码重试。")
 	}
 	query := callback.Query()
-	for _, key := range []string{"authCode", "state", "sfDomain"} {
+	for _, key := range []string{"code", "state", "sfDomain"} {
 		if len(query[key]) != 1 || query.Get(key) == "" {
 			return "", fmt.Errorf("扫码回调缺少有效参数，请刷新二维码重试。")
 		}
@@ -147,9 +158,8 @@ func (c dingTalkConfig) callbackURL(raw string) (string, error) {
 		return "", fmt.Errorf("二维码已更新，请使用当前二维码扫码。")
 	}
 	values := expected.Query()
-	values.Set("authCode", query.Get("authCode"))
+	values.Set("code", query.Get("code"))
 	values.Set("state", c.State)
-	values.Set("supportNewAPI", "1")
 	for key, value := range WithSharedParams(nil) {
 		values[key] = value
 	}
@@ -187,7 +197,7 @@ func (w *dingTalkWeb) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	writer.Header().Set("Cache-Control", "no-store")
 	writer.Header().Set("Referrer-Policy", "no-referrer")
 	writer.Header().Set("X-Content-Type-Options", "nosniff")
-	writer.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src https://login.dingtalk.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+	writer.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; frame-src https://login.dingtalk.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
 	if request.Host != "127.0.0.1:"+w.port && request.Host != "localhost:"+w.port ||
 		(request.Header.Get("Origin") != "" && request.Header.Get("Origin") != "http://"+request.Host) {
 		http.Error(writer, "请通过 SSH 转发后的本机地址访问。", http.StatusForbidden)
@@ -196,6 +206,11 @@ func (w *dingTalkWeb) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	if request.URL.Path == "/" && request.Method == http.MethodGet {
 		writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 		io.WriteString(writer, dingTalkPage)
+		return
+	}
+	if request.URL.Path == "/dingtalk_message.mjs" && request.Method == http.MethodGet {
+		writer.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		io.WriteString(writer, dingTalkMessageScript)
 		return
 	}
 	if subtle.ConstantTimeCompare([]byte(request.Header.Get("Authorization")), []byte("Bearer "+w.token)) != 1 {
@@ -233,7 +248,7 @@ func (w *dingTalkWeb) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 			return
 		}
 		var payload struct {
-			RedirectURL string `json:"redirectUrl"`
+			LoginTmpCode string `json:"loginTmpCode"`
 		}
 		body := http.MaxBytesReader(writer, request.Body, 16384)
 		decoder := json.NewDecoder(body)
@@ -246,15 +261,17 @@ func (w *dingTalkWeb) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 			http.Error(writer, "扫码结果只能包含一个 JSON 对象。", http.StatusBadRequest)
 			return
 		}
-		callback, err := w.config.callbackURL(payload.RedirectURL)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
+		if payload.LoginTmpCode == "" || len(payload.LoginTmpCode) > 4096 || strings.IndexFunc(payload.LoginTmpCode, func(r rune) bool { return r < 33 || r > 126 }) >= 0 {
+			http.Error(writer, "扫码临时授权码无效，请刷新二维码后重试。", http.StatusBadRequest)
 			return
 		}
-		if err := w.session.completeDingTalk(callback); err != nil {
+		log.Println("DingTalk temporary code received; requesting authorization")
+		if err := w.session.exchangeDingTalk(w.config, payload.LoginTmpCode); err != nil {
+			log.Printf("DingTalk authorization failed: %s", err)
 			http.Error(writer, err.Error(), http.StatusBadGateway)
 			return
 		}
+		log.Println("DingTalk authorization ticket received")
 		w.used = true
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		io.WriteString(writer, `{"message":"扫码认证已通过，VPN 客户端正在继续认证和建立连接；连接结果请查看终端。"}`)
@@ -263,6 +280,29 @@ func (w *dingTalkWeb) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	}
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(writer).Encode(map[string]any{"frameUrl": w.config.frameURL(), "expiresAt": w.expires.UnixMilli()})
+}
+
+func (s *Session) exchangeDingTalk(config dingTalkConfig, temporaryCode string) error {
+	req, err := http.NewRequest(http.MethodGet, config.authorizationURL(temporaryCode), nil)
+	if err != nil {
+		return fmt.Errorf("创建钉钉认证请求失败。")
+	}
+	req.Header.Set("User-Agent", UserAgent)
+	client := *s.client
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	response, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("无法连接钉钉授权接口，请刷新二维码后重试。")
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusFound {
+		return fmt.Errorf("钉钉授权接口返回 HTTP %d，请刷新二维码后重试。", response.StatusCode)
+	}
+	callback, err := config.callbackURL(response.Header.Get("Location"))
+	if err != nil {
+		return err
+	}
+	return s.completeDingTalk(callback)
 }
 
 func (s *Session) completeDingTalk(callback string) error {

@@ -362,3 +362,22 @@
 - **Git 提交**：`072786709e346ce5f629a04c9cd663ab8c37b7f5 feat: add headless DingTalk QR login page`，已普通推送至 origin/master；部署结果与本记录通过后续文档提交保存。
 
 ---
+
+## [2026-11-21 14:29] 修复钉钉扫码结果无法到达本机网页
+
+- **需求/问题描述**：
+  > 用户扫码登录后网页没有反应。
+
+- **实际实现的功能与改动**：
+  - 实际网页显示二维码过期，服务器只有刷新请求、没有继续认证。核对钉钉官方脚本，确认新版成功消息 targetOrigin 为学校回调域名，无法投递给 localhost 父页面。
+  - 使用学校配置提供的 `qrcode.htm` 临时授权码流程，消息只接受来自当前钉钉窗口的有效字符串；由服务器向钉钉兑换学校回调，继续核对 HTTPS 域名、路径、登录域及 state，再复用学校认证。
+  - 提交错误后保留错误消息，刷新时清除旧二维码窗口；访问链接令牌改变时重新加载页面。增加不含授权码和 Cookie 的认证阶段日志。
+  - 回归测试先确认旧 iframe 与回调不符合临时码协议；Go 全部测试、Go vet、消息边界检查、10 项 Python 测试和 Compose 校验通过。本机实际从学校配置加载临时码二维码；真实扫码交接与服务器更新结果后续记录。
+
+- **涉及文件**：
+  - `client/atrust/auth/dingtalk.go`、`dingtalk.html`、`dingtalk_message.mjs`、`dingtalk_test.go`、`deploy/hziee/test_dingtalk_message.mjs`。
+  - `.github/workflows/build-image.yml`、`deploy/hziee/README.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`。
+
+- **Git 提交**：待提交。
+
+---

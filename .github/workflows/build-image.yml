@@ -5,6 +5,8 @@ on:
     branches: [master]
     paths:
       - '**/*.go'
+      - client/atrust/auth/*.html
+      - client/atrust/auth/*.mjs
       - go.mod
       - go.sum
       - Dockerfile
@@ -29,6 +31,8 @@ jobs:
         run: go test -mod=readonly ./...
       - name: Test captcha web
         run: python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v
+      - name: Test DingTalk message validation
+        run: node --test deploy/hziee/test_dingtalk_message.mjs
       - name: Validate deployment config
         run: |
           docker compose -f deploy/hziee/compose.headless.yaml config --quiet

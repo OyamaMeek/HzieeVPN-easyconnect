@@ -18,7 +18,8 @@ button:disabled{opacity:.5;cursor:wait}p{overflow-wrap:anywhere}.muted{color:#59
 <button id="refresh" type="button">刷新二维码</button>
 <p class="muted">扫码结果仅交给当前服务器的 VPN 客户端。<br>请勿分享本页完整链接。</p>
 </main>
-<script>
+<script type="module">
+import {dingTalkTemporaryCode} from '/dingtalk_message.mjs';
 const token=location.hash.slice(1),status=document.getElementById('status'),qr=document.getElementById('qr'),button=document.getElementById('refresh');
 let frame,expires=0,submitting=false,finished=false;
 async function request(path,method='GET',body){
@@ -27,7 +28,7 @@ async function request(path,method='GET',body){
  return response.json();
 }
 async function load(refresh=false){
- button.disabled=true;qr.replaceChildren();expires=0;
+ button.disabled=true;qr.replaceChildren();frame=null;expires=0;
  try{
   const data=await request(refresh?'/api/refresh':'/api/config',refresh?'POST':'GET');
   frame=document.createElement('iframe');frame.title='钉钉登录二维码';frame.referrerPolicy='no-referrer';frame.src=data.frameUrl;qr.replaceChildren(frame);expires=data.expiresAt;
@@ -35,15 +36,15 @@ async function load(refresh=false){
  }catch(error){status.textContent=error.message;}finally{button.disabled=false;}
 }
 button.addEventListener('click',()=>load(true));
+window.addEventListener('hashchange',()=>location.reload());
 window.addEventListener('message',async event=>{
- if(event.origin!=='https://login.dingtalk.com'||!frame||event.source!==frame.contentWindow||finished||submitting)return;
- const data=event.data;
- if(!data||typeof data!=='object')return;
- if(!data.success||typeof data.redirectUrl!=='string'){if(data.errorMsg)status.textContent='扫码未完成，请刷新二维码后重试。';return;}
+ if(!frame||finished||submitting)return;
+ const code=dingTalkTemporaryCode(event,frame.contentWindow);
+ if(!code)return;
  if(Date.now()>=expires){status.textContent='二维码已过期，请刷新后重新扫码。';return;}
  submitting=true;button.disabled=true;status.textContent='正在提交学校认证，请稍候…';
- try{const result=await request('/api/submit','POST',{redirectUrl:data.redirectUrl});finished=true;expires=0;qr.replaceChildren();status.textContent=result.message;}
- catch(error){status.textContent=error.message;}finally{submitting=false;button.disabled=finished;}
+ try{const result=await request('/api/submit','POST',{loginTmpCode:code});finished=true;expires=0;qr.replaceChildren();status.textContent=result.message;}
+ catch(error){expires=0;frame=null;qr.replaceChildren();status.textContent=error.message;}finally{submitting=false;button.disabled=finished;}
 });
 setInterval(()=>{if(!expires||submitting||finished)return;const seconds=Math.ceil((expires-Date.now())/1000);if(seconds<=0){qr.replaceChildren();frame=null;expires=0;status.textContent='二维码已过期，请点击刷新二维码。';}else status.textContent='请使用钉钉扫码，二维码约 '+seconds+' 秒后过期。';},1000);
 if(token)load();else{status.textContent='请使用服务器终端输出的完整链接打开本页。';button.disabled=true;}
