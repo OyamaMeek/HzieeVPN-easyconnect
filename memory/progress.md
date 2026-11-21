@@ -6,7 +6,10 @@
 - [x] 官方新版登录脚本把成功消息的 targetOrigin 设置为学校回调域名，与 localhost 父页面不符。学校同时提供临时码流程，官方 `qrcode.htm` 使用 `window.parent.postMessage(code, '*')`，可由接收端严格核对来源。
 - [x] 回归测试先确认旧版生成了受域名限制的 OAuth iframe、回调参数不匹配；改为学校临时码接口，服务端兑换并校验学校回调。错误提示保留，过期/刷新窗口拒绝旧消息。
 - [x] Go 全部测试、Go vet、消息来源及格式检查、10 项验证码测试和 Compose 校验通过；本机原生客户端实际从学校配置加载 `/login/qrcode.htm` 二维码。
-- [ ] 完成测试、镜像发布与 HK-AK 更新，再验证用户真实扫码结果。
+- [x] Linux amd64/arm64 编译通过；修复提交 `3763bb8dcb7e98cff1985683afa9d6cf0aa21b9d fix: relay DingTalk temporary codes from localhost` 已普通推送。GitHub Actions `44875918557` 的 test/image 均成功。
+- [x] HK-AK 已拉取并运行修复镜像，容器版本输出源码 `3763bb8`；扫码和原容器均 running、重启 0。网页与消息模块均实际 HTTP 200。
+- [x] 复用用户应用内浏览器标签，换入修复版链接并刷新；真实钉钉 iframe 显示二维码图片和扫码提示。没有改动原配置与会话，未使用 VNC。
+- [ ] 已请求用户再次扫码并反馈结果，正在等待真实授权码、学校认证票据及后续隧道验证。
 
 ## 独立钉钉扫码网页（2026-11-21）
 

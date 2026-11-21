@@ -372,12 +372,14 @@
   - 实际网页显示二维码过期，服务器只有刷新请求、没有继续认证。核对钉钉官方脚本，确认新版成功消息 targetOrigin 为学校回调域名，无法投递给 localhost 父页面。
   - 使用学校配置提供的 `qrcode.htm` 临时授权码流程，消息只接受来自当前钉钉窗口的有效字符串；由服务器向钉钉兑换学校回调，继续核对 HTTPS 域名、路径、登录域及 state，再复用学校认证。
   - 提交错误后保留错误消息，刷新时清除旧二维码窗口；访问链接令牌改变时重新加载页面。增加不含授权码和 Cookie 的认证阶段日志。
-  - 回归测试先确认旧 iframe 与回调不符合临时码协议；Go 全部测试、Go vet、消息边界检查、10 项 Python 测试和 Compose 校验通过。本机实际从学校配置加载临时码二维码；真实扫码交接与服务器更新结果后续记录。
+  - 回归测试先确认旧 iframe 与回调不符合临时码协议；Go 全部测试、Go vet、消息边界检查、10 项 Python 测试、Compose 校验和 Linux amd64/arm64 编译通过。本机实际从学校配置加载临时码二维码。
+  - [GitHub Actions 44875918557](https://github.com/OyamaMeek/HzieeVPN-easyconnect/actions/runs/44875918557) 的 test/image 均成功；HK-AK 实际更新扫码容器，版本输出对应源码 `3763bb8`，扫码和原容器均 running、重启 0，网页与消息模块 HTTP 200。
+  - 用户实际应用内浏览器已换入修复版链接并显示临时码二维码图片，已请求用户再次扫码。学校认证票据、隧道、代理与保活仍待真实扫码后验证，未以测试输入代替认证成功。
 
 - **涉及文件**：
   - `client/atrust/auth/dingtalk.go`、`dingtalk.html`、`dingtalk_message.mjs`、`dingtalk_test.go`、`deploy/hziee/test_dingtalk_message.mjs`。
-  - `.github/workflows/build-image.yml`、`deploy/hziee/README.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`。
+  - `.github/workflows/build-image.yml`、`deploy/hziee/README.md`、`memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`memory/gotchas.md`。
 
-- **Git 提交**：待提交。
+- **Git 提交**：`3763bb8dcb7e98cff1985683afa9d6cf0aa21b9d fix: relay DingTalk temporary codes from localhost`，已普通推送至 origin/master；部署记录通过后续文档提交保存。
 
 ---
