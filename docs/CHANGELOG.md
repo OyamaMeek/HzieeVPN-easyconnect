@@ -459,6 +459,6 @@
 - **涉及文件**：
   - `memory/agents.md`、`memory/progress.md`、`memory/verify.md`、`deploy/hziee/README.md`、`docs/CHANGELOG.md`。
 
-- **Git 提交**：待提交。
+- **Git 提交**：`ee04b2e80d51b5fda44670a39069d81c3c96a2ce docs: verify official aTrust scan login`，已普通推送；提交信息通过后续文档提交补记。
 
 ---
