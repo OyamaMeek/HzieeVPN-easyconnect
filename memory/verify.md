@@ -141,3 +141,8 @@ GitHub 实际结果：[Actions 44721199266](https://github.com/OyamaMeek/HzieeVP
 - 本地 TDD：更新 `deploy/hziee/test_atrust_qr.cjs` 后，修改实现前 5 项新用例按预期失败。
 - 修改后本地检查：`node --check deploy/hziee/atrust_qr.cjs deploy/hziee/atrust_qr_entry.cjs deploy/hziee/test_atrust_qr.cjs` 通过；`node --test deploy/hziee/test_dingtalk_message.mjs deploy/hziee/test_atrust_qr.cjs` 13/13 通过；`python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v` 11/11 通过；`git diff --check` 无告警。
 - 未在本地执行的检查：本机未安装 `docker`，未在本地运行 `docker compose config` 与容器构建；未直接更新 Shanghai-Aliyun 服务器容器。
+
+补充结果（2026-11-24 13:55）：
+- GitHub Actions 运行 `45335131942`（提交 `a41ded59dc5af0cb1de14f5df588ce0643f936a4`）中 `test`、`image`、`atrust-image` 全部 `completed / success`，GHCR 摘要 `sha256:49265994733c7bbb0db6a20ff5fa7dcb77e92f789fb71aa2d7864e5e28981178`。
+- Shanghai-Aliyun 已更新至 `atrust-sha-a41ded59dc5af0cb1de14f5df588ce0643f936a4` 并实测免令牌接口：日志输出 `auto-closes after login or 600s`，`HTML_GATE=0`、`BAD_ORIGIN=403`、`GET /status?mode=password` 返回 HTTP 200，`POST /password/captcha` 正常返回 272x192 点选验证码图片与 `challenge`。
+- 实际登录提交受学校 aTrust 点选验证码拦截，代理不执行自动识别或代点验证码，停在验证码步骤交由用户在浏览器中完成。
