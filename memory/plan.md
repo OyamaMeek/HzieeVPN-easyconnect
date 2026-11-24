@@ -1,5 +1,16 @@
 # 当前设计与计划
 
+## aTrust 镜像内置每分钟保活与精简无关组件（2026-11-24）
+
+1. 在 `deploy/hziee/atrust-scripts/` 提供专用于官方 aTrust 的最小化容器运行脚本：
+   - `keepalive-ping.sh`：默认每 60 秒对 `10.130.10.75` 执行 ICMP ping（`PING_ADDR=10.130.10.75`）与 HTTP 探测（`PING_ADDR_URL=http://10.130.10.75/`），并正确响应 `SIGINT`/`SIGTERM` 退出。
+   - `vpn-config.sh`：仅保留 aTrust 配置（`utun7`、`aTrustAgent`、`aTrustTray`、`fake-getlogin.so`、`FORCE_OPEN_PORTS="54631 ${ATRUST_WEB_PORT:-58081}"`），移除 EasyConnect（`EC_CLI`/`EC_GUI`）与 `fake-hwaddr` 逻辑。
+   - `start-sangfor.sh`：仅保留 `aTrustAgent` 守护进程与 `aTrustTray` 重启循环，移除 `FAKE_HWADDR` 与交互式 `EXIT_LOCK`。
+   - `start.sh`：仅保留 `danted`（SOCKS5 1080）、`tinyproxy`（HTTP 8888）、VPN NAT/策略路由、`FORCE_OPEN_PORTS`、无头 `Xvfb`（供 Electron 抓取验证码与钉钉二维码，无任何 VNC/TCP 监听端口）、`keepalive-ping.sh` 与 `start-sangfor.sh`，移除 TigerVNC、noVNC、`flwm`、`stalonetray`、`xclip`、`CHROMIUM`、`FORWARD` 与 EasyConnect 逻辑。
+2. 更新 `Dockerfile.atrust`：基于固定摘要的 `hagb/docker-atrust` 阶段安装 `xvfb`，卸载并清理 `tigervnc-standalone-server`、`tigervnc-tools`、`flwm`、`stalonetray`、`xclip`、`x11-utils`、`libssl-dev`、`wget`，删除 `/usr/local/bin/novnc*`、`/usr/local/share/novnc`、`/etc/tinyproxy-novnc.conf`、剪贴板脚本、`xdg-open`、`test-*libs.sh`、`fake-hwaddr.so`、`/usr/share/sangfor/EasyConnect` 与 `/tmp/build-scripts`，写入上述精简脚本和统一登录网页，并通过多阶段 `FROM scratch` 合并干净根文件系统（设置 `PATH`、`PING_ADDR=10.130.10.75`、`PING_ADDR_URL=http://10.130.10.75/`、`PING_INTERVAL=60`、`EXPOSE 1080 8888 58081`）。
+3. 新增 `deploy/hziee/test_atrust_runtime.cjs` 并接入 `.github/workflows/build-image.yml`，在 `test` 与 `atrust-image` 冒烟阶段校验每分钟保活脚本、无头 `Xvfb` 启动、`ldd` 共享库完整性和无关组件彻底移除。
+4. 同步更新 `deploy/hziee/README.md`，保留仓库内独立的 Go 客户端源码不作未授权删除。
+
 ## 统一登录页免令牌直连与自动关闭（2026-11-24）
 
 1. 移除 `deploy/hziee/atrust_qr.cjs`、`deploy/hziee/atrust_qr.html` 与 `Dockerfile.atrust` 中的访问令牌生成、校验与页内输入区，保留 `Host` 白名单、同源 `Origin` 校验与验证码单次 `challenge` 校验。

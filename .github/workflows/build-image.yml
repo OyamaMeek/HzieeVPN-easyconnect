@@ -33,7 +33,7 @@ jobs:
       - name: Test captcha web
         run: python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v
       - name: Test QR login boundaries
-        run: node --test deploy/hziee/test_dingtalk_message.mjs deploy/hziee/test_atrust_qr.cjs
+        run: node --test deploy/hziee/test_dingtalk_message.mjs deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_atrust_runtime.cjs
       - name: Validate deployment config
         run: |
           docker compose -f deploy/hziee/compose.headless.yaml config --quiet
@@ -124,6 +124,33 @@ jobs:
             test -f /opt/atrust-web/atrust_qr.html
             test -f /usr/share/sangfor/aTrust/resources/app/src/main.before-qr.js
             grep -q "/opt/atrust-web/atrust_qr.cjs" /usr/share/sangfor/aTrust/resources/app/src/main.js
+            test -x /usr/local/bin/keepalive-ping.sh
+            test -x /usr/local/bin/start.sh
+            test -x /usr/local/bin/start-sangfor.sh
+            test -x /usr/local/bin/vpn-config.sh
+            test "$PING_ADDR" = "10.130.10.75"
+            test "$PING_ADDR_URL" = "http://10.130.10.75/"
+            test "$PING_INTERVAL" = "60"
             eval "$(vpn-config.sh)"
             test "$FORCE_OPEN_PORTS" = "54631 58081"
+            command -v Xvfb danted tinyproxy socat iptables ip busybox >/dev/null
+            test -f /usr/local/lib/fake-getlogin.so
+            test -x /usr/share/sangfor/aTrust/aTrustTray
+            test -x /usr/share/sangfor/aTrust/resources/bin/aTrustAgent
+            ! LD_LIBRARY_PATH="/usr/share/sangfor/aTrust:/usr/share/sangfor/aTrust/resources/bin" ldd /usr/share/sangfor/aTrust/aTrustTray /usr/share/sangfor/aTrust/resources/bin/aTrustAgent /usr/sbin/danted /usr/bin/tinyproxy /usr/bin/Xvfb | grep -q "not found"
+            for removed_cmd in tigervncserver tigervncpasswd flwm stalonetray xclip xmessage; do
+              ! command -v "$removed_cmd" >/dev/null 2>&1
+            done
+            for removed_path in /usr/local/bin/novnc /usr/local/share/novnc /etc/tinyproxy-novnc.conf /usr/local/bin/get-vnc-clip.sh /usr/local/bin/set-vnc-clip.sh /usr/bin/xdg-open /usr/local/lib/fake-hwaddr.so /usr/share/sangfor/EasyConnect; do
+              ! test -e "$removed_path"
+            done
+            mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
+            Xvfb :99 -screen 0 1280x800x24 -nolisten tcp &
+            xvfb_pid=$!
+            for _ in $(seq 1 30); do
+              [ -S /tmp/.X11-unix/X99 ] && break
+              sleep 0.1
+            done
+            test -S /tmp/.X11-unix/X99
+            kill "$xvfb_pid" && wait "$xvfb_pid" || true
           '

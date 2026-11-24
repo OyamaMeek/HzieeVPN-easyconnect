@@ -1,5 +1,20 @@
 # 当前验证标准
 
+## aTrust 镜像内置每分钟保活与精简无关组件（2026-11-24）
+
+- `bash -n deploy/hziee/atrust-scripts/*.sh` 全部通过。
+- `node --test deploy/hziee/test_dingtalk_message.mjs deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_atrust_runtime.cjs` 全部通过，覆盖：
+  - `keepalive-ping.sh` 默认每 60 秒对 `10.130.10.75` 执行 ICMP ping 与 HTTP 探测、参数覆盖、循环执行与 `SIGTERM` 及时退出；
+  - `vpn-config.sh` 输出 aTrust 专属变量与 `FORCE_OPEN_PORTS`；
+  - `start.sh` / `start-sangfor.sh` / `Dockerfile.atrust` 仅保留账号密码登录、钉钉扫码登录、映射网页、SOCKS5/HTTP 代理与每分钟保活所需组件，且不包含 TigerVNC/noVNC/`flwm`/`stalonetray`/`xclip`/EasyConnect/`CHROMIUM`/`FORWARD`。
+- `python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v` 与 `git diff --check` 通过。
+- GitHub Actions `atrust-image` 构建与容器内冒烟验证通过：验证环境变量默认值、`Xvfb` 实际启动、`aTrustAgent`/`aTrustTray`/`danted`/`tinyproxy`/`Xvfb` 无缺失共享库，且 VNC/noVNC/`flwm`/`stalonetray`/`xclip`/EasyConnect 文件均不存在。
+
+本地结果（2026-11-24 15:46）：
+- TDD 红灯确认：实现前 `node --test deploy/hziee/test_atrust_runtime.cjs` 7/7 按预期失败。
+- 实现后本地校验：`bash -n deploy/hziee/atrust-scripts/*.sh`、`node --check`、`node --test deploy/hziee/test_dingtalk_message.mjs deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_atrust_runtime.cjs`（24/24）、`python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v`（11/11）与 `git diff --check` 全部通过。
+- 本机未安装 `docker`，镜像构建与容器内 `Xvfb`/`ldd`/组件移除冒烟检查交由 GitHub Actions `atrust-image` 执行。
+
 ## 高位端口统一登录网页（2026-11-24）
 
 - `node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs` 全部通过，覆盖：

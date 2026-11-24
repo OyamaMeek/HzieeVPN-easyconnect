@@ -675,3 +675,24 @@
 - **Git 提交**：`e6e9902 fix: reload aTrust login window on expired captcha session`
 
 ---
+
+## [2026-11-24 15:46] aTrust 镜像内置每分钟保活与精简无关组件
+
+- **需求/问题描述**：
+  > 在镜像的源码里增加每分钟 ping `10.130.10.75` 的保活逻辑，并移除与账号密码登录、钉钉扫码登录、映射网页和 SOCKS5/HTTP 代理无关的组件。
+
+- **实际实现的功能与改动**：
+  - 每分钟保活（`deploy/hziee/atrust-scripts/keepalive-ping.sh`、`Dockerfile.atrust`）：默认配置 `PING_INTERVAL=60`、`PING_ADDR=10.130.10.75`、`PING_ADDR_URL=http://10.130.10.75/`，每 60 秒执行 `busybox ping -c 1 -W 2 -w 2` 与 `busybox wget -q -O /dev/null` 探测，并响应 `SIGINT`/`SIGTERM` 快速退出。
+  - 镜像精简与无头化（`Dockerfile.atrust`、`deploy/hziee/atrust-scripts/start.sh`、`vpn-config.sh`、`start-sangfor.sh`）：安装无头 `xvfb` 替代 TigerVNC，卸载并删除 `tigervnc-standalone-server`、`tigervnc-tools`、`flwm`、`stalonetray`、`xclip`、`x11-utils`、`libssl-dev`、`wget`、noVNC 静态文件与脚本、剪贴板脚本、`xdg-open`、`fake-hwaddr.so`、EasyConnect 文件以及启动脚本中的 `CHROMIUM`/`FORWARD`/`EC_CLI`/`EC_GUI` 分支；通过多阶段 `FROM scratch` 合并干净根文件系统，仅暴露 `1080`（SOCKS5）、`8888`（HTTP）与 `58081`（登录网页）。
+  - 测试与 CI（`deploy/hziee/test_atrust_runtime.cjs`、`.github/workflows/build-image.yml`、`deploy/hziee/README.md`）：新增 7 项本地脚本与 Dockerfile 测试（TDD 先确认 7/7 失败，实现后 `node --test` 24/24、`unittest` 11/11、`bash -n` 与 `git diff --check` 全部通过），并扩展 GitHub Actions `atrust-image` 冒烟测试校验保活环境变量、`Xvfb` 实际启动、核心二进制 `ldd` 完整性及无关组件彻底移除。
+
+- **涉及文件**：
+  - `Dockerfile.atrust`
+  - `deploy/hziee/atrust-scripts/keepalive-ping.sh`、`vpn-config.sh`、`start-sangfor.sh`、`start.sh`
+  - `deploy/hziee/test_atrust_runtime.cjs`
+  - `.github/workflows/build-image.yml`
+  - `deploy/hziee/README.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`docs/CHANGELOG.md`
+
+- **Git 提交**：尚未提交；自动审批拒绝直接提交并推送至 `origin/master`，等待用户明确批准。
+
+---

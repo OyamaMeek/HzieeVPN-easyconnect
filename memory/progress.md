@@ -1,5 +1,12 @@
 # 进度
 
+## aTrust 镜像内置每分钟保活与精简无关组件（2026-11-24）
+
+- [x] 新增 `deploy/hziee/test_atrust_runtime.cjs` 并先确认实现前 7/7 失败。
+- [x] 编写 `deploy/hziee/atrust-scripts/` 精简脚本（`keepalive-ping.sh`、`vpn-config.sh`、`start-sangfor.sh`、`start.sh`）并更新 `Dockerfile.atrust`、`.github/workflows/build-image.yml` 与 `deploy/hziee/README.md`。
+- [x] 完成本地测试（`bash -n`、`node --check`、`node --test` 24/24、`unittest` 11/11、`git diff --check`）。
+- [ ] 原子化提交并推送至 `origin/master`：自动审批拒绝本轮直接提交与推送至默认分支，等待用户明确批准后执行并核对 GitHub Actions `test` 与 `atrust-image` 冒烟结果。
+
 ## 统一登录页免令牌直连与自动关闭（2026-11-24）
 
 - [x] 更新 `deploy/hziee/test_atrust_qr.cjs`，覆盖免令牌直连、登录后自动关闭、后台上线自动关闭与超时自动关闭，并确认修改实现前 5 项测试按预期失败。
