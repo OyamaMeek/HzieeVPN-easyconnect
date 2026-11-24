@@ -5,7 +5,7 @@
 - GitHub 仓库：OyamaMeek/HzieeVPN-easyconnect，仓库 ID 1464974211。
 - 项目包含从 ZJU-Connect 克隆的 Go 客户端源码、学校密码登录配置及验证码网页；镜像由本仓库 GitHub Actions 编译并发布至 GHCR。
 - 当前试部署目标：Termius 中的 Shanghai-Aliyun，Debian 13 amd64；此前部署保留在 HK-AK（用户所说的 hi-Al）。真实地址仅保留在用户本地连接配置中。
-- Shanghai-Aliyun 已安装 Docker/Compose/socat/jq；旧 `atrust-qr.service` 已停用，现通过 `/opt/hziee-vpn/compose.yaml` 运行由 GitHub Actions 构建的统一登录镜像 `ghcr.io/oyamameek/hzieevpn-easyconnect:atrust-sha-e6e99027637524e03e820550d5e42e05ea1095b3`（摘要 `sha256:cc69132c8e387b3ac8ddd0303a274ea6ad8414d3113074414666e6c041d3ee29`），容器名 `hziee-vpn-atrust-1`，数据卷 `/opt/hziee-vpn/data:/root`，宿主机监听 `127.0.0.1:1080`、`127.0.0.1:8888` 与 `0.0.0.0:58081`。阿里云安全组已放行 `58081`，浏览器可免令牌直连页面（登录完成或启动 600 秒未登录自动关闭，验证码会话过期时自动重载登录窗口）。
+- Shanghai-Aliyun 已安装 Docker/Compose/socat/jq；旧 `atrust-qr.service` 已停用，现通过 `/opt/hziee-vpn/compose.yaml` 运行由 GitHub Actions 构建的精简保活镜像 `ghcr.io/oyamameek/hzieevpn-easyconnect:atrust-sha-ec68b6f93fefe72e96eb650f15bdc3b59835260e`（摘要 `sha256:e7e088fd0181b7715eee0dea44d56cd0ffcc25bf3b53e7e1f571bc5a796fb32e`），容器名 `hziee-vpn-atrust-1`，数据卷 `/opt/hziee-vpn/data:/root`，宿主机监听 `127.0.0.1:1080`、`127.0.0.1:8888` 与 `0.0.0.0:58081`。镜像内置每 60 秒向 `10.130.10.75` 发送 ICMP ping 与 HTTP 探测的 `keepalive-ping.sh`，已改用无头 `Xvfb` 并移除 TigerVNC/noVNC/`flwm`/`stalonetray`/`xclip`/EasyConnect 等无关组件；保留 `hagb/docker-atrust` 基础层以实现增量拉取（精简层仅 `1.201MB`）。
 - 用户明确要求代理点选验证码；最终在出图约 24 秒后提交，官方模块返回 code=0、Succeeded。原二维码包装入口已恢复，远程两份与本机两份临时凭据均已删除，一次性运行模块已清理；保留当前在线进程及会话，没有重启。原 TOML 与客户端数据保留。用户已批准 Termius 截图检查，窗口可通过系统 Window 菜单 Zoom 恢复显示。
 - 远程操作：用户指定 Termius，通过 cua_repl 操作现有终端；Termalin 因账户限制不可用。
 - 登录：学校入口 https://vpn.hziee.edu.cn 使用 aTrust；现有服务器通过钉钉扫码登录，用户已确认另有门户直接密码账号。

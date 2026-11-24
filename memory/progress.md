@@ -5,7 +5,8 @@
 - [x] 新增 `deploy/hziee/test_atrust_runtime.cjs` 并先确认实现前 7/7 失败。
 - [x] 编写 `deploy/hziee/atrust-scripts/` 精简脚本（`keepalive-ping.sh`、`vpn-config.sh`、`start-sangfor.sh`、`start.sh`）并更新 `Dockerfile.atrust`、`.github/workflows/build-image.yml` 与 `deploy/hziee/README.md`。
 - [x] 完成本地测试（`bash -n`、`node --check`、`node --test` 24/24、`unittest` 11/11、`git diff --check`）。
-- [ ] 原子化提交并推送至 `origin/master`：自动审批拒绝本轮直接提交与推送至默认分支，等待用户明确批准后执行并核对 GitHub Actions `test` 与 `atrust-image` 冒烟结果。
+- [x] 原子化提交并推送至 `origin/master`（`bedb15e`），GitHub Actions 运行 `45350993684` 全部通过；随后针对上海阿里云直连 `ghcr.io` 拉取单层 `427.4MB` 过慢的问题，移除 `Dockerfile.atrust` 的 `FROM scratch` 合并以复用 `hagb/docker-atrust` 9 个基础层（`ec68b6f`），GitHub Actions 运行 `45352322413` 全部通过（摘要 `sha256:e7e088fd0181b7715eee0dea44d56cd0ffcc25bf3b53e7e1f571bc5a796fb32e`）。
+- [x] 在 Shanghai-Aliyun 拉取并部署 `atrust-sha-ec68b6f93fefe72e96eb650f15bdc3b59835260e`（增量精简层仅 `1.201MB`），实测每分钟保活脚本、无头 `Xvfb`、无关组件清理、登录网页 `58081`、密码验证码出图、钉钉扫码二维码出图与 SOCKS5/HTTP 代理全部通过。
 
 ## 统一登录页免令牌直连与自动关闭（2026-11-24）
 

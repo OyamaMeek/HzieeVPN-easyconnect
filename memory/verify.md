@@ -15,6 +15,16 @@
 - 实现后本地校验：`bash -n deploy/hziee/atrust-scripts/*.sh`、`node --check`、`node --test deploy/hziee/test_dingtalk_message.mjs deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_atrust_runtime.cjs`（24/24）、`python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v`（11/11）与 `git diff --check` 全部通过。
 - 本机未安装 `docker`，镜像构建与容器内 `Xvfb`/`ldd`/组件移除冒烟检查交由 GitHub Actions `atrust-image` 执行。
 
+CI 与上海阿里云实测结果（2026-11-24 16:12）：
+- GitHub Actions 运行 `45350993684`（提交 `bedb15e`）与 `45352322413`（提交 `ec68b6f`，保留 `hagb/docker-atrust` 基础层复用）中 `test`、`image`、`atrust-image` 均 `completed / success`。
+- Shanghai-Aliyun 拉取 `ghcr.io/oyamameek/hzieevpn-easyconnect:atrust-sha-ec68b6f93fefe72e96eb650f15bdc3b59835260e`（摘要 `sha256:e7e088fd0181b7715eee0dea44d56cd0ffcc25bf3b53e7e1f571bc5a796fb32e`）：9 个基础层命中缓存，精简层 `1.201MB` 拉取后更新 `/opt/hziee-vpn/compose.yaml` 并启动 `hziee-vpn-atrust-1`。
+- 容器运行态核验：
+  - 环境变量：`PING_ADDR=10.130.10.75`、`PING_ADDR_URL=http://10.130.10.75/`、`PING_INTERVAL=60`、`ATRUST_WEB_PORT=58081`、`ATRUST_LISTEN_PORT=58081`、`ATRUST_PUBLIC_PORTS=58081`。
+  - 进程与端口：运行 `start.sh`、`tinyproxy`、`danted`、`Xvfb :1 -screen 0 1280x800x24 -nolisten tcp`、`keepalive-ping.sh`、`aTrustAgent`、`aTrustTray`；仅监听 `1080`、`8888`、`58081`，无 `5901`/`8080`。
+  - 保活验证：实时进程捕捉到 60 秒触发的 `timeout 10 busybox wget -q -O /dev/null http://10.130.10.75/`，执行 `PING_ONCE=1 /usr/local/bin/keepalive-ping.sh` 返回 0（`KEEPALIVE_ONCE_OK`）。
+  - 组件清理：`/usr/bin/tigervncserver`、`flwm`、`stalonetray`、`xclip`、`/usr/local/share/novnc`、`/usr/local/lib/fake-hwaddr.so` 均不存在；`/usr/share/sangfor/EasyConnect` 仅剩基础镜像 `VOLUME` 声明在运行期自动创建的空目录 `/usr/share/sangfor/EasyConnect/resources/logs`，不含任何程序文件。
+  - 登录与代理：`GET /` 返回 HTTP 200（15616 字节）；`POST /password/captcha` 返回 272x192 PNG（`imageLen=129586`）；`POST /refresh` 后轮询 `GET /status` 出现 `https://login.dingtalk.com/oauth2/challenge.htm` 帧并返回钉钉二维码 PNG（`imageLen=1242`）；SOCKS5（`127.0.0.1:1080`）与 HTTP（`127.0.0.1:8888`）访问 `https://vpn.hziee.edu.cn/` 均返回 HTTP 302。
+
 ## 高位端口统一登录网页（2026-11-24）
 
 - `node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs` 全部通过，覆盖：
