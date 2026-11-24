@@ -9,7 +9,8 @@
 - [x] 针对 Shanghai-Aliyun 实测中暴露的问题完成三轮定向修复并推入 `origin/master`：英文/门户真实标签 `钉钉扫码` 与窗口刷新竞态（`0ea4a3e`、`84baf18`）、钉钉切回密码表单逻辑（`f5e8064`），以及 `history.pushState` 改写窗口 URL 为 `https://vpn.hziee.edu.cn/` 后的登录页识别与绝对 `file://` 模块基址解析（`e5121a3`）。
 - [x] 最终本地测试通过：`node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs`（10/10）与 `unittest`（11/11）；GitHub Actions 运行 `45320746516`（`test`、`image`、`atrust-image`）全部 `success`，产出 `ghcr.io/oyamameek/hzieevpn-easyconnect:atrust-sha-e5121a3553baa014217d5c18f8f7085ea179f1f7`（摘要 `sha256:a52cc61141a48ea9ba81c6e1014a02b1be4a025dc21c3fe07853f329b06f2b5b`）。
 - [x] 在 Shanghai-Aliyun 部署 `atrust-sha-e5121a3553baa014217d5c18f8f7085ea179f1f7` 并通过完整端到端验证（鉴权与外部高位端口 `Host`/`Origin`、密码图形验证码、服务端钉钉二维码、钉钉切回密码验证码均通过，无错误日志）。
-- [ ] 公网浏览器直连 `http://<VPS_IP>:58081/#<token>` 仍需用户在阿里云安全组放行入站 TCP `58081`（宿主机防火墙未拦截，已监听 `0.0.0.0:58081`）；容器当前处于 `logout` 状态等待用户登录，未重新验证登录后校内代理。
+- [x] 公网浏览器直连高位端口 `58081` 已连通；根据用户实测截图修复两项页面问题（`7afe306`）：将 `[hidden]{display:none !important}` 覆盖 `.stage` 的 `display:inline-block` 以消除初始验证码破图占位，并为未携带 `#<token>` 或令牌失效的场景增加明确提示与页面内令牌输入框。
+- [x] GitHub Actions 运行 `45330968083`（`test`、`image`、`atrust-image`）全部 `success`，产出 `ghcr.io/oyamameek/hzieevpn-easyconnect:atrust-sha-7afe306e6cf475d3f00a670bf8f78140d116a218`（摘要 `sha256:e2b58988b4be20a24c5de113d38b819815ed459e9c126ceb84889f0de1fc76b4`）；已在 Shanghai-Aliyun 拉取更新并确认新版页面与当前令牌鉴权返回 `200`。
 
 ## Shanghai-Aliyun 官方验证码登录（2026-11-23）
 

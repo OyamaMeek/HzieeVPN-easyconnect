@@ -131,3 +131,8 @@
 本地结果：学校默认测试首先因原默认协议 easyconnect 失败，修改后通过。Go 全包测试及 vet 通过，macOS arm64、Linux amd64/arm64 静态编译均退出 0，原生二进制 `-version` 正常；不指定学校地址执行 `-auth-info` 成功取得学校真实认证方式，确认 ShenLan / auth/psw。10 项验证码测试、Compose config、JavaScript 语法、工作流 YAML 和 diff 检查通过。`.agent/work/password-source/check.py` 核对 132 个导入文件，仅学校默认配置与两个对应测试区别于上游；验证码代码、TOML 示例、本地凭据及会话 SHA-256 一致，Compose 完整 JSON 仅改变镜像引用。
 
 GitHub 实际结果：[Actions 44721199266](https://github.com/OyamaMeek/HzieeVPN-easyconnect/actions/runs/44721199266) 的 test/image 两项均为 success，构建日志确认两种架构分别执行 go build，发布摘要为 `sha256:b8ee8094ec3dc2c0e759ccd4249d09605ddb8768a8650d365807e4ceefc34b59`。Smoke test published image 成功，容器输出 `ZJU Connect hziee-6f871aeadffefd2367c34d46f7dcfdc313dbfb99`。匿名请求 GHCR token 和 latest OCI 清单成功，检查确认 linux/amd64、linux/arm64；未更改包可见性。镜像可公开拉取；本次没有在服务器启动或切换 VPN。
+
+补充结果（2026-11-24 13:13）：
+- 本地 `node --check` 与 `node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs`：11/11 通过（新增 HTML `[hidden]` 规则、令牌输入框元素与内联脚本编译校验）。
+- GitHub Actions 运行 `45330968083`（提交 `7afe306e6cf475d3f00a670bf8f78140d116a218`）中 `test`、`image`、`atrust-image` 全部 `completed / success`，GHCR 摘要 `sha256:e2b58988b4be20a24c5de113d38b819815ed459e9c126ceb84889f0de1fc76b4`。
+- Shanghai-Aliyun 已更新至 `atrust-sha-7afe306e6cf475d3f00a670bf8f78140d116a218`：`HTML_GATE=7`、`NOAUTH=403`、`AUTH_OK=200`；浏览器直连 `58081` 端口已可用，待用户粘贴最新令牌后完成实际登录。

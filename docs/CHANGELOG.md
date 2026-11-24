@@ -608,6 +608,28 @@
   - `deploy/hziee/atrust_qr.cjs`、`deploy/hziee/atrust_qr_entry.cjs`、`deploy/hziee/test_atrust_qr.cjs`
   - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`docs/CHANGELOG.md`
 
-- **Git 提交**：代码提交 `944f4ef`、`0ea4a3e`、`84baf18`、`f5e8064`、`e5121a3`；本轮文档记录待提交。
+- **Git 提交**：代码提交 `944f4ef`、`0ea4a3e`、`84baf18`、`f5e8064`、`e5121a3`；文档提交 `3d7decd`。
+
+---
+
+## [2026-11-24 13:13] 修复统一登录页初始验证码占位破图并支持页内令牌输入
+
+- **需求/问题描述**：
+  > 用户公网访问高位端口统一登录页时，页面显示未加载验证码的破图图标以及未携带 `#<token>` 导致的“登录链接已失效，请重新获取”。
+
+- **实际实现的功能与改动**：
+  - 修复 `deploy/hziee/atrust_qr.html` 中 `.stage { display: inline-block }` 覆盖默认 `[hidden]` 规则导致未获取验证码前出现破图图标的问题，改为 `[hidden]{display:none !important}` 并在隐藏验证码容器时清除 `src`。
+  - 增加页内访问令牌输入区 `#tokenGate`：当 URL 缺少 `#<token>` 或服务端返回 403 令牌失效时，停止无效轮询、将右上角状态更新为“未认证”、提示附带 `#<token>` 或直接粘贴服务器令牌，并在应用令牌后通过 `history.replaceState` 写入 URL 片段并恢复轮询。
+  - 在 `deploy/hziee/test_atrust_qr.cjs` 新增前端隐藏规则、令牌输入框元素与内联脚本语法校验单测。
+  - 测试与验证：
+    - 本地 `node --check` 与 `node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs` 11/11 通过。
+    - GitHub Actions 运行 `45330968083`（`7afe306e6cf475d3f00a670bf8f78140d116a218`）中 `test`、`image`、`atrust-image` 全部 `success`，发布 GHCR 镜像摘要 `sha256:e2b58988b4be20a24c5de113d38b819815ed459e9c126ceb84889f0de1fc76b4`。
+    - Shanghai-Aliyun 已更新运行 `atrust-sha-7afe306e6cf475d3f00a670bf8f78140d116a218`，复测 `HTML_GATE=7`、`NOAUTH=403`、`AUTH_OK=200`。
+
+- **涉及文件**：
+  - `deploy/hziee/atrust_qr.html`、`deploy/hziee/test_atrust_qr.cjs`
+  - `memory/agents.md`、`memory/progress.md`、`memory/verify.md`、`docs/CHANGELOG.md`
+
+- **Git 提交**：代码提交 `7afe306`；本轮文档记录待提交。
 
 ---
