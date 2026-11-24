@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM hagb/docker-atrust@sha256:d564515395c2eabdbd78152ad47ea11e6d01a41b94435509ac1b8ddff79ffe26 AS base
+FROM hagb/docker-atrust@sha256:d564515395c2eabdbd78152ad47ea11e6d01a41b94435509ac1b8ddff79ffe26
 
 RUN printf 'deb http://deb.debian.org/debian bookworm main\ndeb http://deb.debian.org/debian-security bookworm-security main\n' > /etc/apt/sources.list && \
     rm -rf /etc/apt/sources.list.d /etc/apt/preferences.d/qemu && \
@@ -53,14 +53,9 @@ RUN cp /usr/share/sangfor/aTrust/resources/app/src/main.js \
         /usr/local/bin/start-sangfor.sh \
         /usr/local/bin/start.sh
 
-FROM scratch
-
 ARG COMMIT_ID=unknown
 
-COPY --from=base / /
-
-ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-    ATRUST_WEB_PORT=58081 \
+ENV ATRUST_WEB_PORT=58081 \
     ATRUST_LISTEN_PORT=58081 \
     ATRUST_PUBLIC_PORTS=58081 \
     PING_ADDR=10.130.10.75 \
@@ -68,8 +63,6 @@ ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     PING_INTERVAL=60
 
 EXPOSE 1080 8888 58081
-
-VOLUME /root/
 
 LABEL org.opencontainers.image.source="https://github.com/OyamaMeek/HzieeVPN-easyconnect" \
       org.opencontainers.image.revision="${COMMIT_ID}"

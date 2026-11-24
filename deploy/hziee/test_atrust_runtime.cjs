@@ -203,12 +203,11 @@ test('Dockerfile.atrust configures minute keepalive to 10.130.10.75 and removes 
     '/usr/share/sangfor/EasyConnect',
     '/usr/local/lib/fake-hwaddr.so',
     'deploy/hziee/atrust-scripts/',
-    'FROM scratch',
-    'COPY --from=base / /',
     'EXPOSE 1080 8888 58081',
     'CMD ["start.sh"]',
   ]) {
     assert.equal(dockerfile.includes(required), true, `Dockerfile.atrust must include ${required}`);
   }
+  assert.equal(dockerfile.includes('FROM scratch'), false, 'Dockerfile.atrust should preserve base layers for incremental pulls');
   assert.equal(/EXPOSE\b.*\b(5901|8080)\b/.test(dockerfile), false, 'Dockerfile.atrust must not expose VNC/noVNC ports');
 });
