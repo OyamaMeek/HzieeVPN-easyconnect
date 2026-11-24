@@ -1,5 +1,7 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const http = require('node:http');
+const path = require('node:path');
 const test = require('node:test');
 const {
   trustedFrame,
@@ -287,4 +289,15 @@ test('unified high-port web server supports password captcha flow and server-sid
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
+});
+
+test('atrust_qr.html hides hidden containers and supports inline token entry', () => {
+  const html = fs.readFileSync(path.join(__dirname, 'atrust_qr.html'), 'utf8');
+  assert.match(html, /\[hidden\]\{display:none !important\}/);
+  assert.match(html, /id="tokenGate"/);
+  assert.match(html, /id="tokenInput"/);
+  assert.match(html, /id="applyToken"/);
+  const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+  assert.ok(scriptMatch, 'expected inline script block');
+  assert.doesNotThrow(() => new Function(scriptMatch[1]));
 });
