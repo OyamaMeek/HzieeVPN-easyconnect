@@ -1,5 +1,53 @@
 # 进度
 
+## 高位端口统一登录网页（2026-11-24）
+
+- [x] 补充 Node 与 Python 单元测试用例，确认实现前对应测试失败（Node 5 项失败、Python 1 项失败）。
+- [x] 实现 `deploy/hziee/atrust_qr.cjs`、`deploy/hziee/atrust_qr.html`、`deploy/hziee/atrust_qr_entry.cjs` 与 `deploy/hziee/atrust-qr.service` 的高位端口（默认 `58081`）统一登录网页：支持服务端官方会话抓取密码图形验证码并点选提交官方 `master` 模块，以及服务端抓取钉钉二维码并映射到网页。
+- [x] 实现 `deploy/hziee/captcha_web.py` 的 `--host` 参数与外部高位端口 `Host`/`Origin`/Bearer 鉴权。
+- [x] 新增 `Dockerfile.atrust`、`deploy/hziee/compose.atrust.yaml` 与 `.github/workflows/build-image.yml` 的 `atrust-image` 任务；推送并触发 GitHub Actions 编译发布 GHCR 镜像。
+- [x] 针对 Shanghai-Aliyun 实测中暴露的问题完成三轮定向修复并推入 `origin/master`：英文/门户真实标签 `钉钉扫码` 与窗口刷新竞态（`0ea4a3e`、`84baf18`）、钉钉切回密码表单逻辑（`f5e8064`），以及 `history.pushState` 改写窗口 URL 为 `https://vpn.hziee.edu.cn/` 后的登录页识别与绝对 `file://` 模块基址解析（`e5121a3`）。
+- [x] 最终本地测试通过：`node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs`（10/10）与 `unittest`（11/11）；GitHub Actions 运行 `45320746516`（`test`、`image`、`atrust-image`）全部 `success`，产出 `ghcr.io/oyamameek/hzieevpn-easyconnect:atrust-sha-e5121a3553baa014217d5c18f8f7085ea179f1f7`（摘要 `sha256:a52cc61141a48ea9ba81c6e1014a02b1be4a025dc21c3fe07853f329b06f2b5b`）。
+- [x] 在 Shanghai-Aliyun 部署 `atrust-sha-e5121a3553baa014217d5c18f8f7085ea179f1f7` 并通过完整端到端验证（鉴权与外部高位端口 `Host`/`Origin`、密码图形验证码、服务端钉钉二维码、钉钉切回密码验证码均通过，无错误日志）。
+- [ ] 公网浏览器直连 `http://<VPS_IP>:58081/#<token>` 仍需用户在阿里云安全组放行入站 TCP `58081`（宿主机防火墙未拦截，已监听 `0.0.0.0:58081`）；容器当前处于 `logout` 状态等待用户登录，未重新验证登录后校内代理。
+
+## Shanghai-Aliyun 官方验证码登录（2026-11-23）
+
+- [x] 用户要求代理点选验证码，沿用官方客户端当前会话获取原图；凭据临时保存与 Termius 截图均已有明确授权。
+- [x] 较早提交返回验证码过期，测得其中两次耗时 114 秒和 129 秒；另一次 SFTP 答案没有实际上传，未产生提交标记。改为图片通过 SFTP 下载、答案直接在终端提交。
+- [x] 最终图片生成至提交约 24 秒，官方密码模块返回 code=0、Succeeded；官方状态 online，校内路由经过 utun7。
+- [x] 显式禁用 NO_PROXY 绕过后，两种代理均 HTTP 200、7624 字节、curl 退出 0；1080、8888、28081 只监听 127.0.0.1。
+- [x] 原二维码入口恢复，SHA-256 与备份一致；远程两份和本机两份临时凭据删除并核对。一次性运行模块移除，本机临时图片服务已停止；保留当前在线会话，没有重启客户端。
+- [x] 23:58:28 建立基线，23:59:53 间隔 85 秒复测；官方仍 online，两种代理再次 HTTP 200、7624 字节、退出 0，网页 HTTP 200。分钟连通性复测通过，未配置定时任务。
+- [ ] Git 提交推送仍因此前自动审批拒绝而暂停，未重复执行被拒绝操作。
+
+## Shanghai-Aliyun 密码登录试验（2026-11-23）
+
+- [x] 本地配置文件存在、权限 600，账号及密码均非空，学校入口和 ShenLan 登录域符合现有配置；未输出凭据。
+- [x] 已保存 `/opt/hziee-atrust-qr/main.js.before-password` 原入口；一次性检查文件已进行 Node 语法检查。官方页面已加载英文账号密码表单，SDK 为模块导出；原全局 SFSDP 不存在，不能按全局函数调用。客户端包包含两套网页资源，已定位两套 master 模块的密码认证导出。
+- [x] 凭据临时落盘首次被自动审批拒绝；用户随后明确批准通过 Termius SFTP 上传至上海服务器的权限 600 临时文件，完成后删除副本。另已明确批准 Termius 截图检查；Git 推送仍未获本次明确批准。
+- [x] 通过系统 Window 菜单 Zoom 恢复 Termius 窗口，终端文本读取恢复。更新后的检查文件远程 SHA-256 与本机一致，由官方 master 模块实际提交一次 ShenLan 密码认证。
+- [x] 官方模块返回 BusinessError，code=75500000，message="The characters has expired. Please try again"，graphCheckCodeEnable=1、nextService=auth/psw。需要图形验证码，不能据此判定账号密码正确或错误；官方状态仍为 logout。
+- [x] 已恢复原客户端入口，SHA-256 为 `6dc575935b73d7a932294c54f873341eb8a018d815d020c177e0f3d1a6be6af4`，与原二维码包装入口一致。远程两份临时凭据均已删除并分别检查不存在；一次性运行模块已清理，本机生成的凭据副本也已删除，原 TOML 保留。
+- [x] 恢复后容器 running、重启 0，二维码 service active，网页 HTTP 200，官方状态 logout；未使用 VNC。
+- [x] 后续用户要求代理点选验证码，已完成官方登录及校内代理验证，见上节。
+
+## Shanghai-Aliyun 试部署（2026-11-23）
+
+- [x] 读取项目部署及历史记录，确认使用官方 aTrust 和现有二维码组件。
+- [x] Termius 当前窗口和会话名称为 Shanghai-Aliyun；使用现有终端及 SFTP。终端执行 clear 后全选复制到 Snippets 搜索字段读取最新文本，读取后清空，避免长字段截断历史；未截图。
+- [x] 服务器 Debian 13 amd64，内存约 1.8 GiB、根分区可用约 37 GiB，TUN 存在，初始仅监听 SSH。两台学校数据节点 10441 TCP 均退出 0，认证入口返回 HTTP 302。
+- [x] 安装 Docker 26.1.5、Compose 2.26.1 和 socat，Docker active。服务器直连 Docker Hub 超时、GitHub raw 连接重置，改由本机下载固定摘要镜像后通过 SFTP 上传。
+- [x] 四份现有二维码组件已通过 SFTP 上传；本机三项 Node 边界测试及两份组件语法检查通过。
+- [x] 镜像清单摘要为 `sha256:d564515395c2eabdbd78152ad47ea11e6d01a41b94435509ac1b8ddff79ffe26`，本机下载及远程上传归档的 SHA-256 均为 `4d26bace861850a74d6d520ba051867f97d392d50f167acb0583bbb15fb38112`。Docker 导入后镜像 ID 为 `sha256:e924a8105239be21fdb77cdca708e2949d548ebb6eead0ba589e54e3ff3d0d14`。
+- [x] `/opt/hziee-vpn/data` 保存新客户端数据，`/opt/hziee-atrust-qr` 保存部署文件和原入口备份。官方客户端版本 2.5.16.20，容器 `hziee-vpn-atrust-1` running、重启 0；二维码 service active、enabled，systemd 单元校验通过。未改动 HK-AK。
+- [x] 服务器网页 HTTP 200，无令牌状态请求与错误 Host 均 HTTP 403，当前令牌状态请求成功。1080、8888、28081 仅监听 127.0.0.1。学校入口通过官方 visitHistory 工具写入，返回 code=0、error.value=0。
+- [ ] 取得客户端二维码：状态仍为 logout、image=null，刷新及连续五次状态轮询没有二维码；一次刷新返回 502，组件日志为 `target closed while handling command`。学校连接检测日志返回 connectSuc=true、sdpcAddr=true；当前仅有客户端 index/tray 页面，尚未确定缺少二维码的原因。
+- [ ] 完成本机 SSH 转发：新转发尚未完成，未完成的规则已放弃，没有修改原 HK-AK 转发。用户随后已批准 Termius 截图检查；密码认证试验没有依赖新转发。
+- [x] 用户改为密码与验证码登录，已验证官方 online 和校内两种代理；分钟复测见上节。
+- [x] 保存本轮实际部署和验证结果；Git 状态见开发日志。
+- [ ] 提交及普通推送：自动审批两次拒绝当前 origin/master 的文档提交与推送，要求本次明确批准。五份脱敏文档保留在工作区，未暂存，远端未变更。
+
 ## 复用原官方部署并提供网页链接（2026-11-21 23:04）
 
 - [x] 核对原官方容器固定镜像，容器 running、重启计数 0；二维码 service active，服务器仅监听回环 28081，网页 HTTP 200。

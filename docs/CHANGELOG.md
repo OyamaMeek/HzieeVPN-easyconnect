@@ -497,3 +497,117 @@
 - **Git 提交**：`e2ed0f1 docs: record campus keepalive request failure`，已普通推送；提交信息通过后续文档提交补记。
 
 ---
+
+## [2026-11-23 13:21] 在上海服务器试部署官方 aTrust
+
+- **需求/问题描述**：
+  > 将当前项目部署到 Termius 的 Shanghai-Aliyun 试用。
+
+- **实际实现的功能与改动**：
+  - 通过现有 Termius 终端及 SFTP 操作 Debian 13 amd64 服务器，安装 Docker 26.1.5、Compose 2.26.1、socat 和 jq；两台学校节点 10441 TCP 均连接成功，认证入口 HTTP 302。
+  - 服务器直连 Docker Hub 超时、GitHub raw 连接重置。本机使用校验过的 crane 下载固定摘要 amd64 镜像，通过 SFTP 上传后核对归档 SHA-256 一致，再成功导入 Docker。
+  - 官方客户端 2.5.16.20 容器 running、重启 0；复用现有二维码组件，保留原入口备份，二维码 systemd 单元校验通过、服务 active 和 enabled。新数据位于 `/opt/hziee-vpn/data`，部署文件位于 `/opt/hziee-atrust-qr`，未修改香港部署。
+  - 服务器网页 HTTP 200，未授权状态请求及错误 Host 均 HTTP 403，当前令牌状态请求成功。1080、8888、28081 均只监听回环。四份组件文件校验和与本机一致；三项 Node 边界测试及两份组件语法检查通过。
+  - 官方工具成功写入学校入口，但客户端仍为 logout、image=null。刷新时一次返回 502，日志为 `target closed while handling command`，后续五次轮询仍无二维码，尚未确定原因。
+  - Termius 本地转发的主机选择弹层无可用辅助功能文本；依据用户 AGENTS.md 请求截图授权，尚未收到答复，新转发尚未完成。没有使用 VNC 或截图，没有执行扫码、隧道、校内代理或分钟保活验证。
+  - 本轮复用已有组件，未修改客户端或认证代码；仅更新脱敏记录，执行文档差异检查。
+
+- **涉及文件**：
+  - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`docs/CHANGELOG.md`。
+  - 远程部署文件及私密日志留在目标服务器；本机工具和归档位于已忽略的 `.agent/work/shanghai/`。
+
+- **Git 提交**：未提交。自动审批两次拒绝提交及普通推送至当前 `origin/master`，认为用户提供的自动推送条款不足以授权本次操作；尚未暂存或更改远端，等待本次明确批准。
+
+---
+
+## [2026-11-23 23:26] 在上海官方客户端尝试账号密码登录
+
+- **需求/问题描述**：
+  > 使用已有账号密码登录试试看，并继续完成验证。
+
+- **实际实现的功能与改动**：
+  - 从权限 600、已忽略的 TOML 配置读取现有学校账号密码，确认入口和 ShenLan 登录域；没有将凭据写入终端命令或公开记录。
+  - 凭据临时保存首次被自动审批拒绝；用户明确批准后，通过 Termius SFTP 使用权限 600 的临时文件。用户另已批准 Termius 截图检查，通过系统 Window 菜单恢复显示并读取真实命令结果。
+  - 保留原入口恢复点，通过官方客户端页面内原有 master 模块实际提交一次密码认证，继续由官方模块处理密码加密和认证，没有使用独立 Go 客户端替代。
+  - 官方返回 BusinessError，code=75500000，提示 `The characters has expired. Please try again`，graphCheckCodeEnable=1、nextService=auth/psw。学校要求图形验证码；本轮未处理验证码，不能判定账号密码正确或错误，未登录成功。
+  - 已恢复原客户端入口，其 SHA-256 与原二维码包装入口一致；远程两份临时凭据均已删除并检查不存在，一次性运行模块及本机凭据副本已清理。原 TOML、客户端数据及入口备份保留。
+  - 一次性文件 Node 语法检查通过，上传文件校验和与本机一致；最终容器 running、重启 0，二维码服务 active，服务器网页 HTTP 200、官方状态 logout。未使用 VNC，未验证校内代理或分钟保活，未修改仓库认证代码。
+
+- **涉及文件**：
+  - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`docs/CHANGELOG.md`。
+  - 一次性操作源文件位于已忽略的 `.agent/work/shanghai/`，不含真实凭据；原账号密码配置保持不变。
+
+- **Git 提交**：未提交。此前自动审批拒绝向当前 `origin/master` 提交和普通推送，仍等待本次明确批准；本轮没有再次执行被拒绝的 Git 操作。
+
+---
+
+## [2026-11-24 00:00] 完成上海官方客户端验证码登录
+
+- **需求/问题描述**：
+  > 由代理点选验证码，继续完成 Shanghai-Aliyun 官方客户端的账号密码登录。
+
+- **实际实现的功能与改动**：
+  - 在官方 Electron 页面当前会话中取得学校验证码原图，由官方密码模块处理加密与认证。最终图片生成约 24 秒后提交，返回 code=0、Succeeded，客户端状态 online。
+  - 较早点选提交因耗时返回验证码过期；核对时间与提交标记后，改为 SFTP 下载图片、终端直接提交坐标，未修改仓库认证代码，未使用 VNC。
+  - 实际校内路由经过 utun7；23:58:28 显式禁用 NO_PROXY 绕过后，SOCKS5 和 HTTP 代理均 HTTP 200、7624 字节、curl 退出 0。23:59:53 间隔 85 秒复测，客户端仍 online，两种代理再次得到相同成功结果；网页 HTTP 200。未配置额外定时任务。
+  - 原二维码启动入口已恢复，SHA-256 与恢复点一致。远程两份、本机两份临时凭据均已删除并检查，原配置保留且权限 600；一次性运行模块已清理，本机临时图片服务已停止。当前在线会话保持运行，没有重启客户端。
+  - 容器 running、重启计数 0，二维码 service active；1080、8888、28081 均只监听 127.0.0.1。本机新 SSH 转发仍未完成，香港部署保持原状。
+  - 文档差异检查通过；本轮验证采用真实官方认证、状态、路由及代理请求，没有以模拟结果替代。
+
+- **涉及文件**：
+  - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`docs/CHANGELOG.md`。
+  - 一次性操作与脱敏结果位于已忽略的 `.agent/work/shanghai/`，凭据副本已清理。
+
+- **Git 提交**：未提交。此前自动审批拒绝向当前 `origin/master` 提交和普通推送，要求本次明确批准；本轮没有重复执行被拒绝操作。
+
+---
+
+## [2026-11-24 10:37] 高位端口统一登录网页（密码验证码映射与服务端钉钉扫码映射）
+
+- **需求/问题描述**：
+  > 把密码登录的验证码映射到一个网页上开一个高位端口放出来，钉钉扫码登录也是在服务器上获取二维码再把二维码映射到一个网页上。
+
+- **实际实现的功能与改动**：
+  - 扩展官方 aTrust 客户端内嵌网页服务 `deploy/hziee/atrust_qr.cjs` 与 `deploy/hziee/atrust_qr.html`：在同一网页提供“密码登录”与“钉钉扫码”两个标签页。
+    - 密码登录模式在服务器端通过官方 Electron 会话抓取图形验证码并转为 PNG 映射到网页，网页完成顺序点选与坐标换算后提交给服务器官方 `master` 密码认证模块，强制单次 `challenge` 防重放，并对错误消息做账号与密码脱敏。
+    - 钉钉扫码模式继续在服务器端从官方 Electron 客户端提取钉钉二维码 PNG 并映射到网页，不依赖客户端浏览器加载钉钉登录框，并与密码模式状态隔离。
+  - 调整 `deploy/hziee/atrust-qr.service` 与主机白名单校验：容器内仍监听 `127.0.0.1:28081`，宿主机服务默认改为对外监听高位端口 `58081`（支持通过 `/etc/default/atrust-qr` 与 `ATRUST_PUBLIC_PORTS` 调整），同时保持端口白名单、同源 `Origin` 与恒定时间 `Bearer` 令牌校验。
+  - 同步为 Go 无图形客户端的 `deploy/hziee/captcha_web.py` 增加 `--host` 参数及外部高位端口 `Host`/`Origin`/令牌校验，默认仍保持 `127.0.0.1:18081` 兼容。
+  - 测试与验证：`node --check` 与 HTML 内联脚本检查通过；`node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs` 8/8 通过；`python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v` 11/11 通过；本次未修改 Go 源码（当前 PATH 未安装 `go`），且尚未覆盖部署到线上服务器，保留 Shanghai-Aliyun 当前在线会话。
+
+- **涉及文件**：
+  - `deploy/hziee/atrust_qr.cjs` (+472 / -43)
+  - `deploy/hziee/atrust_qr.html` (+300 / -28)
+  - `deploy/hziee/atrust-qr.service` (+6 / -2)
+  - `deploy/hziee/captcha_web.py` (+44 / -8)
+  - `deploy/hziee/test_atrust_qr.cjs` (+222 / -3)
+  - `deploy/hziee/test_captcha_web.py` (+31 / -0)
+  - `deploy/hziee/README.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`docs/CHANGELOG.md`
+
+- **Git 提交**：`944f4ef feat: add high-port unified login web and aTrust image build`
+
+---
+
+## [2026-11-24 11:44] GitHub Actions 构建统一登录镜像并部署至 Shanghai-Aliyun 验证
+
+- **需求/问题描述**：
+  > 用 GitHub Actions 编译成 Docker 镜像并部署到上海 VPS 机器上测试密码验证码网页与服务端钉钉扫码网页。
+
+- **实际实现的功能与改动**：
+  - 新增 `Dockerfile.atrust`、`deploy/hziee/compose.atrust.yaml` 与 `.github/workflows/build-image.yml` 的 `atrust-image` 任务，将统一登录网页内置到 `/opt/atrust-web/`，并在镜像内将 `vpn-config.sh` 的 `FORCE_OPEN_PORTS` 扩展为 `54631 ${ATRUST_WEB_PORT:-58081}` 以保证 VPN 隧道建立后高位端口回包正常。
+  - 依据 Shanghai-Aliyun 实机测试结果连续修复四个运行时问题：兼容英文与学校门户真实认证标签 `钉钉扫码`、处理刷新时窗口关闭竞态（`0ea4a3e`、`84baf18`）、支持从钉钉扫码切回密码表单（`f5e8064`），以及处理点击钉钉后官方页面 `history.pushState` 将主窗口 URL 改写为 `https://vpn.hziee.edu.cn/` 导致的页面跳过与相对 `import('./assets/...')` 失效问题，改为显式匹配门户 URL 并基于本地 `web/assets/` 绝对 `file://` URL 加载官方模块（`e5121a3`）。
+  - 在 Shanghai-Aliyun 停用旧 `atrust-qr.service`，改由 `/opt/hziee-vpn/compose.yaml` 运行 GHCR 镜像 `atrust-sha-e5121a3553baa014217d5c18f8f7085ea179f1f7`，并完成完整双模式端到端验证。
+  - 测试与验证：
+    - 本地 `node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs` 10/10 通过，`python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v` 11/11 通过。
+    - GitHub Actions 运行 `45320746516`（`e5121a3553baa014217d5c18f8f7085ea179f1f7`）中 `test`、`image`、`atrust-image` 均 `success`，发布 `ghcr.io/oyamameek/hzieevpn-easyconnect:atrust-latest` 与 `:atrust-sha-e5121a3553baa014217d5c18f8f7085ea179f1f7`（摘要 `sha256:a52cc61141a48ea9ba81c6e1014a02b1be4a025dc21c3fe07853f329b06f2b5b`）。
+    - Shanghai-Aliyun 实测：`0.0.0.0:58081`、`127.0.0.1:1080`、`127.0.0.1:8888` 监听正常；鉴权与高位端口 `Host`/`Origin` 校验通过（`root=200`、`noauth=403`、`badhost=403`、`bad_origin=403`、`ext_status=200`）；密码验证码返回真实 `272x192` PNG（`img_len=124654`、`ch_len=32`）；钉钉扫码返回真实服务端二维码 PNG（`img_len=1242`，含 `https://login.dingtalk.com/oauth2/challenge.htm`）；从钉钉切回密码验证码返回真实 `272x192` PNG（`img_len=126382`、`ch_len=32`），`[aTrust Web]` 日志零报错。
+    - 外部网络说明：宿主机 `iptables` 未拦截，但公网直连 `58081` 超时，需在阿里云安全组放行入站 TCP `58081`；本轮未执行真实登录后代理验证。
+
+- **涉及文件**：
+  - `Dockerfile.atrust`、`deploy/hziee/compose.atrust.yaml`、`.github/workflows/build-image.yml`
+  - `deploy/hziee/atrust_qr.cjs`、`deploy/hziee/atrust_qr_entry.cjs`、`deploy/hziee/test_atrust_qr.cjs`
+  - `memory/agents.md`、`memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`docs/CHANGELOG.md`
+
+- **Git 提交**：代码提交 `944f4ef`、`0ea4a3e`、`84baf18`、`f5e8064`、`e5121a3`；本轮文档记录待提交。
+
+---

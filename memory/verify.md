@@ -1,5 +1,59 @@
 # 当前验证标准
 
+## 高位端口统一登录网页（2026-11-24）
+
+- `node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs` 全部通过，覆盖：
+  - 高位端口与回环端口的 Host/Origin/恒定时间 Bearer 鉴权与拒绝非法来源/端口；
+  - 官方验证码 URL 白名单与密码登录参数、坐标范围、尺寸、登录域校验；
+  - 真实 HTTP 服务闭环：密码验证码获取与提交、单次 challenge 防重放、错误消息凭据脱敏、钉钉扫码刷新与状态读取、两种模式互不干扰。
+- `python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v` 全部通过，覆盖默认回环与高位端口外部绑定模式下的鉴权与提交。
+- `go test ./...` 与两份 Compose 配置校验继续通过；不触碰或泄露 `deploy/hziee/headless.toml` 真实凭据。
+- 如尚未部署到线上服务器，明确说明仅完成仓库实现与本地测试，不宣称线上公网高位端口已实测通过。
+
+实际结果（2026-11-24 11:44）：
+- 本地测试：
+  - `node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs`：10/10 通过（含 `isLoginPageUrl` 与 `resolveAssetsBaseUrl` 覆盖 `history.pushState` 场景）。
+  - `python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v`：11/11 通过。
+- GitHub Actions（运行 `45320746516`，提交 `e5121a3553baa014217d5c18f8f7085ea179f1f7`）：
+  - `test`、`image`、`atrust-image` 全部 `completed / success`。
+  - GHCR 镜像 `ghcr.io/oyamameek/hzieevpn-easyconnect:atrust-latest` 与 `:atrust-sha-e5121a3553baa014217d5c18f8f7085ea179f1f7` OCI 索引摘要均为 `sha256:a52cc61141a48ea9ba81c6e1014a02b1be4a025dc21c3fe07853f329b06f2b5b`。
+- Shanghai-Aliyun 实机端到端验证（容器 `hziee-vpn-atrust-1`，镜像 `atrust-sha-e5121a3553baa014217d5c18f8f7085ea179f1f7`）：
+  - 监听端口：`0.0.0.0:58081`、`127.0.0.1:1080`、`127.0.0.1:8888`；`iptables -S INPUT` 为 `-P INPUT ACCEPT`。
+  - 鉴权与高位端口校验：`GET /` 返回 `200`，无令牌 `GET /status` 返回 `403`，非法 `Host` 返回 `403`，跨源 `Origin` 返回 `403`，带外部高位端口 `Host: 203.0.113.10:58081`、`Origin: http://203.0.113.10:58081` 与当前 Bearer 令牌请求 `GET /status?mode=password` 返回 `200`。
+  - 密码登录验证码：`POST /password/captcha` 返回真实学校 `272x192` PNG（`data:image/png;base64,iVBO`，长度 `124654`，`challenge` 长度 `32`，`error: null`）。
+  - 服务端钉钉扫码：`POST /refresh` 后第 3 次轮询 `GET /status` 返回真实服务端钉钉二维码 PNG（`data:image/png;base64,iVBO`，长度 `1242`，`frames` 包含 `https://login.dingtalk.com/oauth2/challenge.htm`，`error: null`）。
+  - 钉钉切回密码验证码：`POST /password/captcha` 返回真实 `272x192` PNG（`data:image/png;base64,iVBO`，长度 `126382`，`challenge` 长度 `32`，`error: null`），`[aTrust Web]` 日志零错误。
+- 未验证范围与外部前置条件：本机直连服务器公网 `58081` 端口超时，需在阿里云安全组放行入站 TCP `58081` 后方可从公网浏览器直连；容器当前为 `logout` 状态待本人登录，本轮未重新验证登录后隧道与校内代理。
+
+## 官方客户端验证码点选（2026-11-23）
+
+- 图片必须来自本轮官方客户端同一会话；读取原图提示，提交顺序坐标、宽高，不能以另一认证会话的图片代替。
+- 验证码点选已由用户本轮明确要求；账号密码临时保存和 Termius 截图授权沿用已取得的明确答复。
+- 只有官方 online 并实际请求校内地址成功，才能记录代理或分钟保活通过。
+- 记录真实错误码及原因；完成后恢复原入口并确认临时凭据副本已删除。
+
+实际结果：最终真实验证码在生成约 24 秒后提交，官方密码模块 code=0、Succeeded；客户端 online，校内路由经过 utun7。23:58:28（Asia/Taipei）显式禁用 NO_PROXY 绕过后，SOCKS5 与 HTTP 代理均 HTTP 200、7624 字节、curl 退出 0。原二维码入口 SHA-256 恢复为 `6dc575935b73d7a932294c54f873341eb8a018d815d020c177e0f3d1a6be6af4`；远程两份、本机两份临时凭据已清理，原 TOML 权限保留 600。本机临时图片服务停止，容器 running、重启计数 0，二维码 service active，三端口只监听回环。当前进程完成的一次性操作已停止，保留在线会话，没有重启；下次启动使用已恢复的入口。
+
+分钟复测：23:59:53（Asia/Taipei）距上述基线 85 秒，官方仍 online，SOCKS5 与 HTTP 代理再次 HTTP 200、7624 字节、curl 退出 0，网页 HTTP 200。未配置额外定时保活任务。
+
+## Shanghai-Aliyun 密码登录试验（2026-11-23）
+
+- 账号密码仅从已忽略的本地配置读取，通过 SFTP 传至用户指定上海主机，不在终端、公开记录或 Git 中展示。
+- 继续使用官方客户端及其 SDK，不能用独立 Go 登录成功替代官方客户端登录证据。
+- 保留原入口恢复点；一次性文件进行语法检查及实际运行验证，状态与日志只输出允许字段。
+- 验证码、短信等额外认证与登录成功分别记录；只有官方 online 且实际校内请求成功，才验证分钟保活。
+
+实际结果：一次性操作文件语法检查通过；更新文件远程校验和与本机一致，通过官方客户端网页 master 模块实际提交一次密码认证。返回 code=75500000、graphCheckCodeEnable=1、nextService=auth/psw，提示字符验证码已过期；未处理验证码，官方状态 logout。用户已明确批准权限 600 的临时凭据落盘及 Termius 截图检查。恢复后的客户端入口校验和与原二维码包装入口一致，远程两份凭据副本分别检查不存在，本机生成副本已删除；原 TOML 保留。最终容器 running、重启 0，二维码 service active，服务器网页 HTTP 200。未使用 VNC，未验证校内代理与分钟保活。
+
+## Shanghai-Aliyun 试部署（2026-11-23）
+
+- 确认当前目标为 Shanghai-Aliyun，读取真实系统、Docker、监听端口和学校节点连接结果。
+- 复用官方客户端和现有二维码组件；检查配置、容器、服务及网页真实 HTTP 响应，入口只监听回环地址。
+- 本人扫码前只记录等待状态；官方登录成功后实际验证 HTTP/SOCKS5 校内访问和一次分钟保活。
+- 命令已发送不算执行成功，必须取得退出码或实际输出；未获截图授权前继续使用文本方式。
+
+实际结果：服务器 Debian 13 amd64，学校两个数据节点 10441 TCP 均退出 0、认证入口 HTTP 302。安装 Docker 26.1.5、Compose 2.26.1、socat 和 jq；固定摘要镜像通过本机下载及 SFTP 上传，归档校验和一致，导入成功。四份二维码组件文件校验和一致，本机三项 Node 边界测试和两份组件语法检查通过。官方 aTrust 2.5.16.20 容器 running、重启 0，二维码服务 active、enabled，systemd 单元校验通过；服务器网页 HTTP 200，无令牌与错误 Host HTTP 403，鉴权状态请求成功，三端口仅监听回环。首次安装仍停留 logout、image=null；刷新时一次返回 502，随后五次轮询均未取得二维码。Termius 本地转发主机选择无法通过辅助功能文本读取，截图授权尚未收到答复，未完成新转发。未扫码、未验证隧道、代理或分钟保活；未使用 VNC 或截图，也未更改客户端源码。
+
 ## 校内 HTTP 保活请求复测（2026-11-21 23:15）
 
 - 在 HK-AK 通过官方容器的宿主机回环 HTTP 代理 8888 实际请求校内保活地址，显式禁用 NO_PROXY 绕过，连接超时 5 秒、总超时 10 秒。

@@ -4,7 +4,9 @@
 - 本地项目：macOS 上的 HzieeVPN-easyconnect，master 分支；工作目录仍为 docker-easyconnect。
 - GitHub 仓库：OyamaMeek/HzieeVPN-easyconnect，仓库 ID 1464974211。
 - 项目包含从 ZJU-Connect 克隆的 Go 客户端源码、学校密码登录配置及验证码网页；镜像由本仓库 GitHub Actions 编译并发布至 GHCR。
-- 目标服务器：Termius 中的 HK-AK（用户所说的 hi-Al），Debian 13 amd64；真实地址仅保留在用户本地连接配置中。
+- 当前试部署目标：Termius 中的 Shanghai-Aliyun，Debian 13 amd64；此前部署保留在 HK-AK（用户所说的 hi-Al）。真实地址仅保留在用户本地连接配置中。
+- Shanghai-Aliyun 已安装 Docker/Compose/socat/jq；旧 `atrust-qr.service` 已停用，现通过 `/opt/hziee-vpn/compose.yaml` 运行由 GitHub Actions 构建的统一登录镜像 `ghcr.io/oyamameek/hzieevpn-easyconnect:atrust-sha-e5121a3553baa014217d5c18f8f7085ea179f1f7`（摘要 `sha256:a52cc61141a48ea9ba81c6e1014a02b1be4a025dc21c3fe07853f329b06f2b5b`），容器名 `hziee-vpn-atrust-1`，数据卷 `/opt/hziee-vpn/data:/root`，宿主机监听 `127.0.0.1:1080`、`127.0.0.1:8888` 与 `0.0.0.0:58081`。
+- 用户明确要求代理点选验证码；最终在出图约 24 秒后提交，官方模块返回 code=0、Succeeded。原二维码包装入口已恢复，远程两份与本机两份临时凭据均已删除，一次性运行模块已清理；保留当前在线进程及会话，没有重启。原 TOML 与客户端数据保留。用户已批准 Termius 截图检查，窗口可通过系统 Window 菜单 Zoom 恢复显示。
 - 远程操作：用户指定 Termius，通过 cua_repl 操作现有终端；Termalin 因账户限制不可用。
 - 登录：学校入口 https://vpn.hziee.edu.cn 使用 aTrust；现有服务器通过钉钉扫码登录，用户已确认另有门户直接密码账号。
 - 密码登录：ZJU-Connect 1.3.1，密码认证 auth/psw、上网账号登录域 ShenLan，复用内置 60 秒 HTTP 保活；用户镜像及配置已上传 `/opt/hziee-headless`。首次认证后因学校节点不可达退出，尚未完成切换；旧容器已重新启动，校内 HTTP 请求仍超时。
