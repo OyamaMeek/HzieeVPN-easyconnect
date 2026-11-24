@@ -1,5 +1,15 @@
 # 当前验证标准
 
+## 根目录 README 详细部署指南（2026-11-24）
+
+- `README.md` 中的镜像名称与标签、Compose 文件路径、端口映射、挂载路径、环境变量与默认值、CLI 参数均与 `Dockerfile`、`Dockerfile.atrust`、`.github/workflows/build-image.yml`、`deploy/hziee/compose.*.yaml`、`deploy/hziee/atrust_qr.cjs`、`deploy/hziee/atrust-scripts/`、`deploy/hziee/captcha_web.py` 及 `configs/config.go` 保持一致。
+- `README.md` 中所有本地相对链接目标文件与标题锚点实际存在，Mermaid 图表语法有效，表格使用标准 Markdown，无对比套话与禁用词汇，示例服务器地址与 IP 均采用明确标注的脱敏占位符。
+- `git diff --check` 无空白或格式错误，仓库现有单元测试套件保持通过。
+
+本地结果（2026-11-24 20:26）：
+- 核验 `README.md` 内全部 15 个链接路径有效，无禁用句式或真实服务器地址泄露，`git diff --check` 无告警。
+- `bash -n deploy/hziee/atrust-scripts/*.sh`、`python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py'`（11/11）与 `node --test deploy/hziee/test_dingtalk_message.mjs deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_atrust_runtime.cjs`（24/24）全部通过；本机未安装 `docker`，未在本地执行容器启动。
+
 ## aTrust 镜像内置每分钟保活与精简无关组件（2026-11-24）
 
 - `bash -n deploy/hziee/atrust-scripts/*.sh` 全部通过。

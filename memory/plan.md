@@ -1,5 +1,16 @@
 # 当前设计与计划
 
+## 根目录 README 详细部署指南（2026-11-24）
+
+1. 重写根目录 `README.md`，完整反映仓库当前有效的三套部署方案与双镜像发布体系：
+   - 项目定位、Mermaid 运行拓扑图与三种部署方案选型表（官方 aTrust 容器推荐方案、Go 无图形密码登录方案、Go 无图形钉钉扫码方案）。
+   - 前置条件：宿主机架构、`/dev/net/tun` 与 `NET_ADMIN` 要求、Docker/Compose/Python 版本、学校认证入口与数据节点网络连通性、端口与安全组规则。
+   - 方案一（`deploy/hziee/compose.atrust.yaml`）：数据目录准备、容器启动、SSH 转发与高位端口直连两种访问方式、密码验证码与钉钉扫码双模式操作、10 分钟超时或登录成功后自动关闭机制、环境变量表。
+   - 方案二（`deploy/hziee/compose.headless.yaml`）：`headless.toml` 凭据配置、`captcha_web.py` 首次交互登录、后台常驻运行与会话持久化。
+   - 方案三（`deploy/hziee/compose.dingtalk.yaml`）：独立端口与会话目录、SSH 转发 `28081` 扫码登录流程。
+   - 连接验证与远程代理接入（本机 `curl` 检查与个人电脑 SSH 本地端口转发）、日常运维与镜像升级、源码构建与本地测试、常见问题排查、敏感文件保护与开源许可证。
+2. 校验文档中的文件路径、相对链接与锚点、命令参数、端口号、环境变量及脱敏占位符，更新 `docs/CHANGELOG.md` 与 `memory/` 并提交推送。
+
 ## aTrust 镜像内置每分钟保活与精简无关组件（2026-11-24）
 
 1. 在 `deploy/hziee/atrust-scripts/` 提供专用于官方 aTrust 的最小化容器运行脚本：

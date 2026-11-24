@@ -696,3 +696,20 @@
 - **Git 提交**：`bedb15e feat: add minute keepalive ping and strip unrelated aTrust image components`、`ec68b6f fix: preserve hagb/docker-atrust base layers for incremental image pulls`
 
 ---
+
+## [2026-11-24 20:26] 补充根目录 README 详细部署指南
+
+- **需求/问题描述**：
+  > 在 README 写上详细的部署指南。
+
+- **实际实现的功能与改动**：
+  - 部署指南重写（`README.md`）：补充 Mermaid 运行拓扑图与三种部署方案选型表，完整编写官方 aTrust 容器推荐方案（`compose.atrust.yaml`、`58081` 密码验证码与钉钉扫码双模式统一登录网页、SSH 转发与公网高位端口直连、10 分钟超时或登录后自动关闭机制、环境变量参考表）、Go 无图形密码登录方案（`compose.headless.yaml`、`headless.toml`、`captcha_web.py` 交互登录与后台常驻）、Go 无图形钉钉扫码方案（`compose.dingtalk.yaml`、`28081` 扫码与独立代理端口）、代理连通性验证与个人电脑 SSH 隧道接入、日常运维与版本固定、本地源码构建测试、常见问题排查及数据安全说明。
+  - 测试与验证：核对仓库全部 15 处文档链接存在且有效，示例地址均采用明确标注的脱敏占位符（`example.com`、`203.0.113.10`）；本地 `git diff --check`、`bash -n deploy/hziee/atrust-scripts/*.sh`、`python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py'`（11/11）与 `node --test deploy/hziee/test_dingtalk_message.mjs deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_atrust_runtime.cjs`（24/24）全部通过（本机未安装 `docker`，未在本地执行容器构建）。
+
+- **涉及文件**：
+  - `README.md` (+266 / -23)
+  - `memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`docs/CHANGELOG.md`
+
+- **Git 提交**：待提交
+
+---
