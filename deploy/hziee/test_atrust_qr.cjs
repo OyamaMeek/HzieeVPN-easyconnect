@@ -4,6 +4,8 @@ const test = require('node:test');
 const {
   trustedFrame,
   trustedCaptchaUrl,
+  isLoginPageUrl,
+  resolveAssetsBaseUrl,
   allowedHost,
   authorized,
   qrData,
@@ -49,6 +51,35 @@ test('only fetches captcha images from trusted official origins', () => {
   for (const url of ['http://vpn.hziee.edu.cn/captcha', 'https://evil.test/captcha', 'https://user:pass@vpn.hziee.edu.cn/captcha', 'not-a-url']) {
     assert.equal(trustedCaptchaUrl(url), false);
   }
+});
+
+test('recognizes login window URLs before and after pushState and resolves local assets base URL', () => {
+  assert.equal(isLoginPageUrl('file:///usr/share/sangfor/aTrust/resources/app/web/index.html?host=https://vpn.hziee.edu.cn#/login'), true);
+  assert.equal(isLoginPageUrl('https://vpn.hziee.edu.cn/'), true);
+  for (const url of [
+    'file:///usr/share/sangfor/aTrust/resources/app/web/tray.html',
+    'file:///usr/share/sangfor/aTrust/resources/app/web/qrcode.html',
+    'https://login.dingtalk.com/oauth2/challenge.htm',
+    'https://evil.test/',
+    'http://vpn.hziee.edu.cn/',
+  ]) {
+    assert.equal(isLoginPageUrl(url), false);
+  }
+
+  const fakeElectron = { app: { getAppPath: () => '/usr/share/sangfor/aTrust/resources/app' } };
+  const exists = target => target === '/usr/share/sangfor/aTrust/resources/app/web/assets';
+  assert.equal(
+    resolveAssetsBaseUrl(fakeElectron, 'https://vpn.hziee.edu.cn/', exists),
+    'file:///usr/share/sangfor/aTrust/resources/app/web/assets/'
+  );
+  assert.equal(
+    resolveAssetsBaseUrl(fakeElectron, 'file:///usr/share/sangfor/aTrust/resources/app/web/index.html', exists),
+    'file:///usr/share/sangfor/aTrust/resources/app/web/assets/'
+  );
+  assert.equal(
+    resolveAssetsBaseUrl(fakeElectron, 'https://vpn.hziee.edu.cn/', () => false),
+    './assets/'
+  );
 });
 
 test('requires allowed loopback or configured high port, exact Origin and current bearer token', () => {

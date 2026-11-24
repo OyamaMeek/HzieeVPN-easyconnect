@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { fileURLToPath, pathToFileURL } = require('url');
 
 const LOOPBACK_PORT = 28081;
 const CAPTCHA_MAX_BYTES = 2 * 1024 * 1024;
@@ -46,6 +47,43 @@ function trustedCaptchaUrl(raw) {
   } catch (_) {
     return false;
   }
+}
+
+function isLoginPageUrl(raw) {
+  try {
+    const url = new URL(raw || 'about:blank');
+    if (url.username || url.password) return false;
+    if (url.protocol === 'file:' && !url.host && path.basename(url.pathname) === 'index.html') {
+      return true;
+    }
+    return url.protocol === 'https:' && !url.port && url.hostname === 'vpn.hziee.edu.cn';
+  } catch (_) {
+    return false;
+  }
+}
+
+function resolveAssetsBaseUrl(electron, rawUrl, existsSync = fs.existsSync) {
+  try {
+    const url = new URL(rawUrl || 'about:blank');
+    if (url.protocol === 'file:' && !url.host) {
+      const localAssets = path.join(path.dirname(fileURLToPath(url)), 'assets');
+      if (existsSync(localAssets)) return pathToFileURL(localAssets).href + '/';
+      return './assets/';
+    }
+  } catch (_) {
+  }
+  const candidates = [];
+  try {
+    if (electron && electron.app && typeof electron.app.getAppPath === 'function') {
+      candidates.push(path.join(electron.app.getAppPath(), 'web', 'assets'));
+    }
+  } catch (_) {
+  }
+  candidates.push('/usr/share/sangfor/aTrust/resources/app/web/assets');
+  for (const dir of candidates) {
+    if (existsSync(dir)) return pathToFileURL(dir).href + '/';
+  }
+  return './assets/';
 }
 
 function allowedHost(host, publicPorts = DEFAULT_PUBLIC_PORTS) {
@@ -286,20 +324,20 @@ function readCaptchaImage(electron, url, session) {
 async function findPasswordForm(electron, allowSwitch = false) {
   for (const contents of electron.webContents.getAllWebContents()) {
     if (contents.isDestroyed()) continue;
-    let url;
-    try {
-      url = new URL(contents.getURL() || 'about:blank');
-    } catch (_) {
-      continue;
-    }
-    if (url.protocol !== 'file:' || path.basename(url.pathname) !== 'index.html') continue;
+    const rawUrl = contents.getURL() || 'about:blank';
+    if (!isLoginPageUrl(rawUrl)) continue;
+    const assetsBaseUrl = resolveAssetsBaseUrl(electron, rawUrl);
     try {
       const source = await contents.executeJavaScript(`(async () => {
         if (!document.querySelector('input[type="password"]')) return null;
+        const base = ${JSON.stringify(assetsBaseUrl)};
         const scripts = Array.from(document.scripts).map(e => (e.src || e.dataset.src || '').split('/').pop().split('?')[0]);
         const older = scripts.includes('index.8d430ddd.js');
-        const api = await import(older ? './assets/common.147d417f.js' : './assets/common.72564e07.js');
-        return { url: older ? api.z() : api.N(), master: older ? 'master.eedc111d.js' : 'master.c998f688.js' };
+        const api = await import(base + (older ? 'common.147d417f.js' : 'common.72564e07.js'));
+        return {
+          url: older ? api.z() : api.N(),
+          master: base + (older ? 'master.eedc111d.js' : 'master.c998f688.js'),
+        };
       })()`);
       if (source && source.url && source.master) {
         return { contents, url: source.url, master: source.master };
@@ -570,12 +608,7 @@ function start(electron, appConfig, mainWindow) {
       let form = await findPasswordForm(electron, true);
       const hasLocalLogin = electron.webContents.getAllWebContents().some(contents => {
         if (contents.isDestroyed()) return false;
-        try {
-          const url = new URL(contents.getURL() || 'about:blank');
-          return url.protocol === 'file:' && path.basename(url.pathname) === 'index.html';
-        } catch (_) {
-          return false;
-        }
+        return isLoginPageUrl(contents.getURL() || 'about:blank');
       });
       if (!form && hasLocalLogin) {
         for (let attempt = 0; attempt < 6; attempt += 1) {
@@ -622,7 +655,10 @@ function start(electron, appConfig, mainWindow) {
             .slice(0, 350);
         };
         try {
-          const mod = await import('./assets/' + input.master);
+          const moduleUrl = (input.master.includes('://') || input.master.startsWith('./'))
+            ? input.master
+            : './assets/' + input.master;
+          const mod = await import(moduleUrl);
           const res = await mod.a({
             username: input.account,
             password: input.password,
@@ -657,6 +693,8 @@ function start(electron, appConfig, mainWindow) {
 module.exports = {
   trustedFrame,
   trustedCaptchaUrl,
+  isLoginPageUrl,
+  resolveAssetsBaseUrl,
   allowedHost,
   authorized,
   qrData,
