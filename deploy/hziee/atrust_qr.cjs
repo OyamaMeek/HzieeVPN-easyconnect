@@ -163,8 +163,25 @@ const readQR = `(() => {
 })()`;
 
 const selectDingTalk = `(() => {
+  const labels = new Set([
+    '钉钉',
+    '钉钉登录',
+    '钉钉扫码登录',
+    '钉钉认证',
+    'dingtalk',
+    'dingtalk login',
+    'scan with dingtalk',
+    'dingtalk authentication',
+  ]);
+  const matches = element => {
+    if (!element.getClientRects().length) return false;
+    const text = (element.textContent || '').trim().toLowerCase();
+    const title = (element.getAttribute('title') || '').trim().toLowerCase();
+    const aria = (element.getAttribute('aria-label') || '').trim().toLowerCase();
+    return labels.has(text) || labels.has(title) || labels.has(aria);
+  };
   const elements = Array.from(document.querySelectorAll('button,a,[role="button"],span,div')).reverse();
-  const element = elements.find(e => e.getClientRects().length && ['钉钉','钉钉登录','钉钉扫码登录'].includes(e.textContent.trim()));
+  const element = elements.find(matches);
   if (element) { element.click(); return true; }
   return false;
 })()`;
@@ -452,7 +469,7 @@ function createServer(options) {
         });
       }
     } catch (error) {
-      console.error('[aTrust Web]', error && error.name ? error.name : 'Error');
+      console.error('[aTrust Web]', error && error.message ? sanitizeMessage(error.message) : (error && error.name ? error.name : 'Error'));
       send(502, { error: '官方 aTrust 客户端交互失败，请重试或检查客户端日志' });
     } finally {
       busy = false;
@@ -482,15 +499,25 @@ function start(electron, appConfig, mainWindow) {
         selectUntil = Date.now() + 60000;
         mainWindow.closeMainWindow();
         mainWindow.showLoginPagePreCheck('https://vpn.hziee.edu.cn', false, false, true);
+        await delay(800);
       }
       for (const contents of electron.webContents.getAllWebContents()) {
         if (contents.isDestroyed()) continue;
-        const source = new URL(contents.getURL() || 'about:blank');
-        result.sources.push(source.protocol === 'file:' ? source.pathname : source.origin + source.pathname);
-        if (!trustedFrame(contents.getURL())) continue;
-        const current = await inspectWindow(contents, Date.now() < selectUntil);
-        result.image = current.image || result.image;
-        result.frames.push(...current.frames);
+        const rawUrl = contents.getURL() || 'about:blank';
+        try {
+          const source = new URL(rawUrl);
+          result.sources.push(source.protocol === 'file:' ? source.pathname : source.origin + source.pathname);
+        } catch (_) {
+          continue;
+        }
+        if (!trustedFrame(rawUrl)) continue;
+        try {
+          const current = await inspectWindow(contents, Date.now() < selectUntil);
+          result.image = current.image || result.image;
+          result.frames.push(...current.frames);
+        } catch (windowError) {
+          console.error('[aTrust Web] inspectWindow skipped:', sanitizeMessage(windowError && windowError.message));
+        }
       }
       if (result.image) selectUntil = 0;
       return result;
@@ -576,6 +603,7 @@ module.exports = {
   qrData,
   sanitizeMessage,
   validatePasswordLogin,
+  selectDingTalk,
   createServer,
   start,
 };

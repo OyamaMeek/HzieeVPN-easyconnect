@@ -9,6 +9,7 @@ const {
   qrData,
   sanitizeMessage,
   validatePasswordLogin,
+  selectDingTalk,
   createServer,
 } = require('./atrust_qr.cjs');
 
@@ -84,6 +85,12 @@ test('accepts bounded PNG data URLs only', () => {
 test('sanitizes credentials from error messages', () => {
   assert.equal(sanitizeMessage('bad user alice with pass s3cr3t!', ['s3cr3t!', 'alice']), 'bad user [redacted] with pass [redacted]');
   assert.equal(sanitizeMessage(null, ['a']), '');
+});
+
+test('DingTalk selector matches both Chinese and English official client labels', () => {
+  assert.match(selectDingTalk, /钉钉扫码登录/);
+  assert.match(selectDingTalk, /scan with dingtalk/);
+  assert.match(selectDingTalk, /dingtalk/);
 });
 
 test('validates password login payload, coordinates, domain and challenge', () => {
