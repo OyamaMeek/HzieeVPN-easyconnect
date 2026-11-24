@@ -19,8 +19,7 @@ RUN cp /usr/share/sangfor/aTrust/resources/app/src/main.js \
 
 ENV ATRUST_WEB_PORT=58081 \
     ATRUST_LISTEN_PORT=58081 \
-    ATRUST_PUBLIC_PORTS=58081 \
-    ATRUST_TOKEN_PATH=/root/.atrust-qr/token
+    ATRUST_PUBLIC_PORTS=58081
 
 EXPOSE 1080 8888 58081
 

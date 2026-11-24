@@ -84,13 +84,13 @@ test('recognizes login window URLs before and after pushState and resolves local
   );
 });
 
-test('requires allowed loopback or configured high port, exact Origin and current bearer token', () => {
-  const headers = { host: '127.0.0.1:28081', authorization: 'Bearer secret' };
-  assert.equal(authorized(headers, 'secret'), true);
-  assert.equal(authorized({ ...headers, origin: 'http://127.0.0.1:28081' }, 'secret'), true);
-  assert.equal(authorized({ host: '203.0.113.10:58081', origin: 'http://203.0.113.10:58081', authorization: 'Bearer secret' }, 'secret'), true);
-  assert.equal(authorized({ host: 'vpn.example.com:58081', origin: 'https://vpn.example.com:58081', authorization: 'Bearer secret' }, 'secret'), true);
-  assert.equal(authorized({ host: '[::1]:58081', origin: 'http://[::1]:58081', authorization: 'Bearer secret' }, 'secret'), true);
+test('requires allowed loopback or configured high port and exact Origin without token', () => {
+  const headers = { host: '127.0.0.1:28081' };
+  assert.equal(authorized(headers), true);
+  assert.equal(authorized({ ...headers, origin: 'http://127.0.0.1:28081' }), true);
+  assert.equal(authorized({ host: '203.0.113.10:58081', origin: 'http://203.0.113.10:58081' }), true);
+  assert.equal(authorized({ host: 'vpn.example.com:58081', origin: 'https://vpn.example.com:58081' }), true);
+  assert.equal(authorized({ host: '[::1]:58081', origin: 'http://[::1]:58081' }), true);
   assert.equal(allowedHost('203.0.113.10:58081'), true);
   assert.equal(allowedHost('203.0.113.10:28081'), false);
   for (const badHost of ['evil.test', '203.0.113.10:80', '203.0.113.10:18081', 'user:pass@203.0.113.10:58081', '203.0.113.10:58081/x', '']) {
@@ -100,11 +100,8 @@ test('requires allowed loopback or configured high port, exact Origin and curren
     { host: 'evil.test' },
     { host: '203.0.113.10:80' },
     { origin: 'http://evil.test' },
-    { authorization: 'Bearer old' },
-    { authorization: 'Bearer é' },
-    { authorization: '' },
   ]) {
-    assert.equal(authorized({ ...headers, ...extra }, 'secret'), false);
+    assert.equal(authorized({ ...headers, ...extra }), false);
   }
 });
 
@@ -185,15 +182,16 @@ test('validates password login payload, coordinates, domain and challenge', () =
   }
 });
 
-test('unified high-port web server supports password captcha flow and server-side DingTalk QR', async () => {
+test('unified high-port web server supports password captcha flow, DingTalk QR, and auto-closes after login', async () => {
   let statusValue = 'logout';
   let dingTalkRefreshes = 0;
   let loginCalls = 0;
-  const token = 'test-token-value';
 
   const server = createServer({
-    token,
     publicPorts: [58081],
+    autoCloseTimeoutMs: 60000,
+    statusPollIntervalMs: 50,
+    closeDelayMs: 50,
     getLoginStatus: () => statusValue,
     readDingTalk: async ({ refresh }) => {
       if (refresh) dingTalkRefreshes += 1;
@@ -223,8 +221,8 @@ test('unified high-port web server supports password captcha flow and server-sid
   const apiHeaders = {
     Host: '203.0.113.10:58081',
     Origin: 'http://203.0.113.10:58081',
-    Authorization: 'Bearer ' + token,
   };
+  const closed = new Promise(resolve => server.once('close', resolve));
 
   try {
     const page = await httpRequest(port, 'GET', '/', { Host: '203.0.113.10:58081' });
@@ -233,8 +231,12 @@ test('unified high-port web server supports password captcha flow and server-sid
     assert.match(page.body, /密码登录/);
     assert.match(page.body, /钉钉扫码/);
 
-    const denied = await httpRequest(port, 'GET', '/status', { Host: '203.0.113.10:58081' });
+    const denied = await httpRequest(port, 'GET', '/status', { Host: '203.0.113.10:58081', Origin: 'http://evil.test' });
     assert.equal(denied.status, 403);
+
+    const directStatus = await httpRequest(port, 'GET', '/status?mode=password', { Host: '203.0.113.10:58081' });
+    assert.equal(directStatus.status, 200);
+    assert.equal(JSON.parse(directStatus.body).status, 'logout');
 
     const qrRes = await httpRequest(port, 'POST', '/refresh', apiHeaders);
     assert.equal(qrRes.status, 200);
@@ -280,23 +282,72 @@ test('unified high-port web server supports password captcha flow and server-sid
     });
     const okLogin = await httpRequest(port, 'POST', '/password/login', { ...apiHeaders, 'Content-Type': 'application/json' }, okPayload);
     assert.equal(okLogin.status, 200);
-    assert.equal(JSON.parse(okLogin.body).ok, true);
-    assert.equal(JSON.parse(okLogin.body).status, 'online');
+    const okBody = JSON.parse(okLogin.body);
+    assert.equal(okBody.ok, true);
+    assert.equal(okBody.status, 'online');
+    assert.equal(okBody.closing, true);
     assert.equal(loginCalls, 2);
 
-    const replay = await httpRequest(port, 'POST', '/password/login', { ...apiHeaders, 'Content-Type': 'application/json' }, okPayload);
-    assert.equal(replay.status, 409);
+    await closed;
+    assert.equal(server.listening, false);
+    await assert.rejects(() => httpRequest(port, 'GET', '/status', apiHeaders));
   } finally {
-    await new Promise(resolve => server.close(resolve));
+    if (server.listening) await new Promise(resolve => server.close(resolve));
   }
 });
 
-test('atrust_qr.html hides hidden containers and supports inline token entry', () => {
+test('auto-closes login server when client enters online state in background', async () => {
+  let statusValue = 'logout';
+  const server = createServer({
+    publicPorts: [58081],
+    autoCloseTimeoutMs: 60000,
+    statusPollIntervalMs: 25,
+    closeDelayMs: 30,
+    getLoginStatus: () => statusValue,
+    readDingTalk: async () => ({ image: null, frames: [], sources: [] }),
+    fetchCaptcha: async () => { throw new Error('unused'); },
+    submitPassword: async () => { throw new Error('unused'); },
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const closed = new Promise(resolve => server.once('close', resolve));
+  try {
+    assert.equal(server.listening, true);
+    statusValue = 'online';
+    await closed;
+    assert.equal(server.listening, false);
+  } finally {
+    if (server.listening) await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test('auto-closes login server after idle timeout without login', async () => {
+  const server = createServer({
+    publicPorts: [58081],
+    autoCloseTimeoutMs: 60,
+    statusPollIntervalMs: 25,
+    closeDelayMs: 20,
+    getLoginStatus: () => 'logout',
+    readDingTalk: async () => ({ image: null, frames: [], sources: [] }),
+    fetchCaptcha: async () => { throw new Error('unused'); },
+    submitPassword: async () => { throw new Error('unused'); },
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const closed = new Promise(resolve => server.once('close', resolve));
+  try {
+    await closed;
+    assert.equal(server.listening, false);
+  } finally {
+    if (server.listening) await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test('atrust_qr.html hides hidden containers, omits token gate, and handles auto-close', () => {
   const html = fs.readFileSync(path.join(__dirname, 'atrust_qr.html'), 'utf8');
   assert.match(html, /\[hidden\]\{display:none !important\}/);
-  assert.match(html, /id="tokenGate"/);
-  assert.match(html, /id="tokenInput"/);
-  assert.match(html, /id="applyToken"/);
+  assert.doesNotMatch(html, /id="tokenGate"/);
+  assert.doesNotMatch(html, /id="tokenInput"/);
+  assert.doesNotMatch(html, /Authorization/);
+  assert.match(html, /自动关闭/);
   const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
   assert.ok(scriptMatch, 'expected inline script block');
   assert.doesNotThrow(() => new Function(scriptMatch[1]));

@@ -15,11 +15,6 @@ h1{font-size:20px;margin:0}
 .tabs button{border:0;background:transparent;color:#475569;padding:9px 12px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
 .tabs button.active{background:#fff;color:#0f172a;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 [hidden]{display:none !important}
-.token-gate{margin-bottom:16px;padding:12px;border:1px solid #fecaca;border-radius:10px;background:#fff7f7}
-.token-gate .field{margin-bottom:0}
-.token-row{display:flex;gap:8px;align-items:center}
-.token-row input{flex:1;min-width:0}
-.token-gate code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:#fee2e2;padding:1px 4px;border-radius:4px}
 .field{margin-bottom:12px;text-align:left}
 .field label{display:block;font-size:13px;color:#475569;margin-bottom:4px}
 .field input{width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
@@ -43,15 +38,6 @@ small{display:block;color:#64748b;margin-top:18px;font-size:12px;text-align:cent
   <h1>aTrust 客户端登录</h1>
   <span id="clientBadge" class="badge">检查状态中</span>
 </header>
-<div id="tokenGate" class="token-gate" hidden>
-  <div class="field">
-    <label for="tokenInput">访问令牌（也可直接访问 <code>http://服务器:端口/#&lt;token&gt;</code>）</label>
-    <div class="token-row">
-      <input id="tokenInput" type="password" autocomplete="off" placeholder="粘贴 cat /opt/hziee-vpn/data/.atrust-qr/token 输出">
-      <button id="applyToken" type="button" class="primary">应用令牌</button>
-    </div>
-  </div>
-</div>
 <div class="tabs" role="tablist">
   <button id="tabPassword" type="button" role="tab" aria-selected="true" class="active">密码登录</button>
   <button id="tabDingTalk" type="button" role="tab" aria-selected="false">钉钉扫码</button>
@@ -95,24 +81,10 @@ small{display:block;color:#64748b;margin-top:18px;font-size:12px;text-align:cent
   </div>
 </section>
 
-<small>所有认证与 VPN 隧道均在服务器官方 aTrust 客户端完成。请妥善保管带令牌的完整链接，勿分享给他人。</small>
+<small>所有认证与 VPN 隧道均在服务器官方 aTrust 客户端完成。验证完成或超时后，登录网页服务将自动关闭。</small>
 </main>
 <script>
-function readHashToken() {
-  const raw = location.hash.slice(1).trim();
-  if (!raw) return '';
-  try {
-    return decodeURIComponent(raw).trim();
-  } catch (_) {
-    return raw;
-  }
-}
-
-let token = readHashToken();
 const badge = document.getElementById('clientBadge');
-const tokenGate = document.getElementById('tokenGate');
-const tokenInput = document.getElementById('tokenInput');
-const applyTokenBtn = document.getElementById('applyToken');
 const tabPassword = document.getElementById('tabPassword');
 const tabDingTalk = document.getElementById('tabDingTalk');
 const panelPassword = document.getElementById('panelPassword');
@@ -133,14 +105,11 @@ const refreshQrBtn = document.getElementById('refreshQr');
 
 let mode = 'password';
 let pending = false;
+let serviceClosed = false;
 let timer = null;
 let captcha = null;
 let points = [];
 const DEFAULT_PWD_HINT = '点击“获取 / 刷新验证码”从服务器官方客户端加载图形验证码，再依次点选提交。';
-
-function authHeaders(extra = {}) {
-  return Object.assign({ Authorization: 'Bearer ' + token }, extra);
-}
 
 function setBadge(status) {
   badge.textContent = '客户端：' + (status || '未知');
@@ -157,43 +126,28 @@ function hideCaptchaStage() {
   captchaImg.removeAttribute('src');
 }
 
-function showTokenGate(message) {
-  tokenGate.hidden = false;
-  badge.textContent = '未认证';
-  badge.className = 'badge';
+function markServiceClosed(message, kind = 'ok') {
+  serviceClosed = true;
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+  captcha = null;
+  points = [];
+  hideCaptchaStage();
+  qrImg.hidden = true;
   loadCaptchaBtn.disabled = true;
+  undoBtn.disabled = true;
+  clearBtn.disabled = true;
+  submitPwdBtn.disabled = true;
   refreshQrBtn.disabled = true;
-  setBox(mode === 'password' ? pwdStatus : qrStatus, message, 'err');
-}
-
-function hideTokenGate() {
-  tokenGate.hidden = true;
-  loadCaptchaBtn.disabled = pending;
-  refreshQrBtn.disabled = pending;
-}
-
-function applyToken() {
-  const nextToken = tokenInput.value.trim();
-  if (!nextToken) {
-    showTokenGate('请粘贴服务器当前访问令牌后再点击“应用令牌”。');
-    return;
-  }
-  token = nextToken;
-  tokenInput.value = '';
-  try {
-    history.replaceState(null, '', '#' + encodeURIComponent(token));
-  } catch (_) {
-  }
-  hideTokenGate();
-  badge.textContent = '检查状态中';
-  badge.className = 'badge';
-  setBox(mode === 'password' ? pwdStatus : qrStatus, '正在验证访问令牌并读取官方客户端状态…');
-  pollStatus();
+  setBox(pwdStatus, message, kind);
+  setBox(qrStatus, message, kind);
 }
 
 function renderMarkers() {
   for (const node of captchaStage.querySelectorAll('.marker')) node.remove();
-  if (!captcha) {
+  if (!captcha || serviceClosed) {
     undoBtn.disabled = true;
     clearBtn.disabled = true;
     submitPwdBtn.disabled = true;
@@ -221,65 +175,61 @@ function setMode(nextMode) {
   tabDingTalk.setAttribute('aria-selected', String(!isPwd));
   panelPassword.hidden = !isPwd;
   panelDingTalk.hidden = isPwd;
-  pollStatus();
+  if (!serviceClosed) pollStatus();
 }
 
 async function pollStatus() {
-  if (pending) return;
-  if (!token) {
-    showTokenGate('当前链接缺少访问令牌：请在链接末尾附加 #<token>，或在上方粘贴服务器令牌。');
-    return;
-  }
+  if (pending || serviceClosed) return;
   try {
-    const response = await fetch('/status?mode=' + mode, { headers: authHeaders() });
+    const response = await fetch('/status?mode=' + mode);
     const data = await response.json();
-    if (response.status === 403 && data.error !== '来源不允许') {
-      showTokenGate((data.error || '登录链接已失效，请重新获取') + '。请在上方粘贴服务器最新令牌。');
+    if (response.status === 503) {
+      markServiceClosed(data.error || '登录网页服务已自动关闭。如需重新登录，请重启容器。', 'err');
       return;
     }
     if (!response.ok) throw new Error(data.error || '读取状态失败');
-    hideTokenGate();
     setBadge(data.status);
+    if (['online', 'login'].includes(data.status) || data.closing) {
+      markServiceClosed('aTrust 客户端状态：' + data.status + '，已登录，登录网页服务已自动关闭。', 'ok');
+      return;
+    }
     if (mode === 'dingtalk') {
       qrImg.hidden = !data.image;
       if (data.image) {
         qrImg.src = data.image;
         setBox(qrStatus, '这是服务器官方 aTrust 客户端当前二维码，请使用钉钉扫码确认。');
-      } else if (['online', 'login'].includes(data.status)) {
-        setBox(qrStatus, 'aTrust 客户端状态：' + data.status + '，已登录。请检查代理连通性。', 'ok');
       } else {
         setBox(qrStatus, '官方客户端尚未显示二维码，请点击“刷新客户端二维码”。');
       }
-    } else if (['online', 'login'].includes(data.status)) {
-      setBox(pwdStatus, 'aTrust 客户端状态：' + data.status + '，当前已登录。', 'ok');
-    } else if (pwdStatus.classList.contains('err') || pwdStatus.textContent.includes('正在验证访问令牌')) {
+    } else if (pwdStatus.classList.contains('err')) {
       setBox(pwdStatus, DEFAULT_PWD_HINT);
     }
   } catch (error) {
-    setBox(mode === 'password' ? pwdStatus : qrStatus, error.message, 'err');
+    if (!serviceClosed) {
+      setBox(mode === 'password' ? pwdStatus : qrStatus, '无法连接登录服务（可能已完成验证或超时自动关闭；如需重新登录，请重启容器）。', 'err');
+    }
   }
 }
 
 async function fetchCaptcha() {
-  if (pending) return;
-  if (!token) {
-    showTokenGate('当前链接缺少访问令牌：请在链接末尾附加 #<token>，或在上方粘贴服务器令牌。');
-    return;
-  }
+  if (pending || serviceClosed) return;
   pending = true;
   loadCaptchaBtn.disabled = true;
   renderMarkers();
   setBox(pwdStatus, '正在从服务器官方客户端获取验证码…');
   try {
-    const response = await fetch('/password/captcha', { method: 'POST', headers: authHeaders() });
+    const response = await fetch('/password/captcha', { method: 'POST' });
     const data = await response.json();
-    if (response.status === 403 && data.error !== '来源不允许') {
-      showTokenGate((data.error || '登录链接已失效，请重新获取') + '。请在上方粘贴服务器最新令牌。');
+    if (response.status === 503) {
+      markServiceClosed(data.error || '登录网页服务已自动关闭。如需重新登录，请重启容器。', 'err');
+      return;
+    }
+    if (data.status) setBadge(data.status);
+    if (data.closing || ['online', 'login'].includes(data.status)) {
+      markServiceClosed('aTrust 客户端状态：' + data.status + '，已登录，登录网页服务已自动关闭。', 'ok');
       return;
     }
     if (!response.ok) throw new Error(data.error || '获取验证码失败');
-    hideTokenGate();
-    setBadge(data.status);
     captcha = { challenge: data.challenge, width: data.width, height: data.height };
     points = [];
     captchaImg.src = data.image;
@@ -292,13 +242,13 @@ async function fetchCaptcha() {
     setBox(pwdStatus, error.message, 'err');
   } finally {
     pending = false;
-    loadCaptchaBtn.disabled = !tokenGate.hidden;
+    loadCaptchaBtn.disabled = serviceClosed;
     renderMarkers();
   }
 }
 
 async function submitPasswordLogin() {
-  if (pending || !captcha) return;
+  if (pending || !captcha || serviceClosed) return;
   const username = usernameInput.value.trim();
   const domain = domainInput.value.trim();
   const password = passwordInput.value;
@@ -317,7 +267,7 @@ async function submitPasswordLogin() {
   try {
     const response = await fetch('/password/login', {
       method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username,
         domain,
@@ -333,13 +283,17 @@ async function submitPasswordLogin() {
     points = [];
     hideCaptchaStage();
     if (data.status) setBadge(data.status);
-    if (response.status === 403 && data.error !== '来源不允许') {
-      showTokenGate((data.error || '登录链接已失效，请重新获取') + '。请在上方粘贴服务器最新令牌。');
+    if (response.status === 503) {
+      markServiceClosed(data.error || '登录网页服务已自动关闭。如需重新登录，请重启容器。', 'err');
       return;
     }
     if (response.ok && data.ok) {
       passwordInput.value = '';
-      setBox(pwdStatus, '登录成功，客户端状态：' + (data.status || 'online') + '。', 'ok');
+      if (data.closing || ['online', 'login'].includes(data.status)) {
+        markServiceClosed('登录成功，客户端状态：' + (data.status || 'online') + '，登录网页服务已自动关闭。', 'ok');
+      } else {
+        setBox(pwdStatus, '密码与验证码校验成功，正在等待官方客户端完成连接…', 'ok');
+      }
     } else {
       setBox(pwdStatus, (data.error || '登录失败') + '（验证码已失效，请重新获取）', 'err');
     }
@@ -347,31 +301,29 @@ async function submitPasswordLogin() {
     setBox(pwdStatus, error.message, 'err');
   } finally {
     pending = false;
-    loadCaptchaBtn.disabled = !tokenGate.hidden;
+    loadCaptchaBtn.disabled = serviceClosed;
     renderMarkers();
   }
 }
 
 async function refreshDingTalk() {
-  if (pending) return;
-  if (!token) {
-    showTokenGate('当前链接缺少访问令牌：请在链接末尾附加 #<token>，或在上方粘贴服务器令牌。');
-    return;
-  }
+  if (pending || serviceClosed) return;
   pending = true;
   refreshQrBtn.disabled = true;
   setBox(qrStatus, '正在通知服务器官方客户端刷新钉钉二维码…');
   try {
-    const response = await fetch('/refresh', { method: 'POST', headers: authHeaders() });
+    const response = await fetch('/refresh', { method: 'POST' });
     const data = await response.json();
-    if (response.status === 403 && data.error !== '来源不允许') {
-      qrImg.hidden = true;
-      showTokenGate((data.error || '登录链接已失效，请重新获取') + '。请在上方粘贴服务器最新令牌。');
+    if (response.status === 503) {
+      markServiceClosed(data.error || '登录网页服务已自动关闭。如需重新登录，请重启容器。', 'err');
+      return;
+    }
+    if (data.status) setBadge(data.status);
+    if (data.closing || ['online', 'login'].includes(data.status)) {
+      markServiceClosed('aTrust 客户端状态：' + data.status + '，已登录，登录网页服务已自动关闭。', 'ok');
       return;
     }
     if (!response.ok) throw new Error(data.error || '刷新失败');
-    hideTokenGate();
-    setBadge(data.status);
     qrImg.hidden = !data.image;
     if (data.image) {
       qrImg.src = data.image;
@@ -384,7 +336,7 @@ async function refreshDingTalk() {
     setBox(qrStatus, error.message, 'err');
   } finally {
     pending = false;
-    refreshQrBtn.disabled = !tokenGate.hidden;
+    refreshQrBtn.disabled = serviceClosed;
   }
 }
 
@@ -400,24 +352,11 @@ captchaImg.addEventListener('click', event => {
 
 tabPassword.addEventListener('click', () => setMode('password'));
 tabDingTalk.addEventListener('click', () => setMode('dingtalk'));
-applyTokenBtn.addEventListener('click', applyToken);
-tokenInput.addEventListener('keydown', event => {
-  if (event.key === 'Enter') applyToken();
-});
 loadCaptchaBtn.addEventListener('click', fetchCaptcha);
 undoBtn.addEventListener('click', () => { points.pop(); renderMarkers(); });
 clearBtn.addEventListener('click', () => { points = []; renderMarkers(); });
 submitPwdBtn.addEventListener('click', submitPasswordLogin);
 refreshQrBtn.addEventListener('click', refreshDingTalk);
-window.addEventListener('hashchange', () => {
-  token = readHashToken();
-  if (token) {
-    hideTokenGate();
-    pollStatus();
-  } else {
-    showTokenGate('当前链接缺少访问令牌：请在链接末尾附加 #<token>，或在上方粘贴服务器令牌。');
-  }
-});
 timer = setInterval(pollStatus, 3000);
 pollStatus();
 </script>

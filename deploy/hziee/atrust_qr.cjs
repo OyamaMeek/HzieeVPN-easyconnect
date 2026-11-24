@@ -7,6 +7,9 @@ const { fileURLToPath, pathToFileURL } = require('url');
 const LOOPBACK_PORT = 28081;
 const CAPTCHA_MAX_BYTES = 2 * 1024 * 1024;
 const CAPTCHA_TTL_MS = 300000;
+const AUTO_CLOSE_TIMEOUT_MS = 10 * 60 * 1000;
+const STATUS_POLL_INTERVAL_MS = 2000;
+const CLOSE_DELAY_MS = 3500;
 const LOGIN_BODY_MAX_BYTES = 16384;
 const DEFAULT_DOMAIN = 'ShenLan';
 const TRUSTED_CAPTCHA_HOSTS = ['vpn.hziee.edu.cn', '127.0.0.1', 'localhost.sangfor.com.cn'];
@@ -102,19 +105,16 @@ function allowedHost(host, publicPorts = DEFAULT_PUBLIC_PORTS) {
   }
 }
 
-function constantTimeEqual(left, right) {
-  if (typeof left !== 'string' || typeof right !== 'string') return false;
-  const leftBuf = Buffer.from(left, 'utf8');
-  const rightBuf = Buffer.from(right, 'utf8');
-  return leftBuf.length === rightBuf.length && crypto.timingSafeEqual(leftBuf, rightBuf);
+function isLoggedIn(status) {
+  return status === 'online' || status === 'login';
 }
 
-function authorized(headers, token, publicPorts = DEFAULT_PUBLIC_PORTS) {
+function authorized(headers, publicPorts = DEFAULT_PUBLIC_PORTS) {
   if (!headers || !allowedHost(headers.host, publicPorts)) return false;
   if (headers.origin && headers.origin !== 'http://' + headers.host && headers.origin !== 'https://' + headers.host) {
     return false;
   }
-  return constantTimeEqual(headers.authorization, 'Bearer ' + token);
+  return true;
 }
 
 function qrData(value) {
@@ -391,9 +391,11 @@ function readJsonBody(request, maxBytes = LOGIN_BODY_MAX_BYTES) {
 
 function createServer(options) {
   const {
-    token,
     publicPorts = DEFAULT_PUBLIC_PORTS,
     htmlPath = path.join(__dirname, 'atrust_qr.html'),
+    autoCloseTimeoutMs = AUTO_CLOSE_TIMEOUT_MS,
+    statusPollIntervalMs = STATUS_POLL_INTERVAL_MS,
+    closeDelayMs = CLOSE_DELAY_MS,
     getLoginStatus,
     readDingTalk,
     fetchCaptcha,
@@ -401,6 +403,52 @@ function createServer(options) {
   } = options;
   let busy = false;
   let activeCaptcha = null;
+  let closing = false;
+  let closed = false;
+  let pollTimer = null;
+  let timeoutTimer = null;
+  let closeTimer = null;
+  let forceCloseTimer = null;
+
+  function clearTimers() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (timeoutTimer) { clearTimeout(timeoutTimer); timeoutTimer = null; }
+    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+    if (forceCloseTimer) { clearTimeout(forceCloseTimer); forceCloseTimer = null; }
+  }
+
+  function finalizeClose(reason) {
+    if (closed) return;
+    closed = true;
+    closing = true;
+    clearTimers();
+    if (server.listening) {
+      console.log('[aTrust Web] Closing login web server (' + reason + ')');
+      server.close();
+      if (typeof server.closeIdleConnections === 'function') {
+        server.closeIdleConnections();
+      }
+      forceCloseTimer = setTimeout(() => {
+        if (typeof server.closeAllConnections === 'function') {
+          server.closeAllConnections();
+        }
+      }, 200);
+      if (typeof forceCloseTimer.unref === 'function') forceCloseTimer.unref();
+    }
+  }
+
+  function scheduleClose(reason, delayMs = 0) {
+    if (closed) return;
+    closing = true;
+    if (delayMs <= 0) {
+      finalizeClose(reason);
+      return;
+    }
+    if (!closeTimer) {
+      closeTimer = setTimeout(() => finalizeClose(reason), delayMs);
+      if (typeof closeTimer.unref === 'function') closeTimer.unref();
+    }
+  }
 
   const server = http.createServer(async (request, response) => {
     const headers = {
@@ -410,17 +458,24 @@ function createServer(options) {
       'X-Frame-Options': 'DENY',
       'Content-Security-Policy': "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
     };
-    function send(status, data, type = 'application/json; charset=utf-8') {
-      response.writeHead(status, Object.assign({}, headers, { 'Content-Type': type }));
+    function send(status, data, type = 'application/json; charset=utf-8', extraHeaders = null) {
+      response.writeHead(status, Object.assign({}, headers, extraHeaders, { 'Content-Type': type }));
       response.end(typeof data === 'string' ? data : JSON.stringify(data));
+    }
+    function sendAndClose(status, data, reason) {
+      closing = true;
+      response.once('finish', () => finalizeClose(reason));
+      scheduleClose(reason, Math.min(closeDelayMs, 1500));
+      send(status, data, 'application/json; charset=utf-8', { Connection: 'close' });
     }
     if (!allowedHost(request.headers.host, publicPorts)) return send(403, { error: '来源不允许' });
     const parsedUrl = new URL(request.url || '/', 'http://127.0.0.1');
     const pathname = parsedUrl.pathname;
     if (pathname === '/' && request.method === 'GET') {
+      if (closing) return send(503, { error: '登录网页服务已自动关闭' }, 'application/json; charset=utf-8', { Connection: 'close' });
       return send(200, fs.readFileSync(htmlPath, 'utf8'), 'text/html; charset=utf-8');
     }
-    if (!authorized(request.headers, token, publicPorts)) return send(403, { error: '登录链接已失效，请重新获取' });
+    if (!authorized(request.headers, publicPorts)) return send(403, { error: '来源不允许' });
 
     const isStatus = pathname === '/status' && request.method === 'GET';
     const isRefresh = pathname === '/refresh' && request.method === 'POST';
@@ -428,6 +483,9 @@ function createServer(options) {
     const isPasswordLogin = pathname === '/password/login' && request.method === 'POST';
     if (!isStatus && !isRefresh && !isCaptcha && !isPasswordLogin) {
       return send(404, { error: '接口不存在' });
+    }
+    if (closing && !isStatus) {
+      return send(503, { error: '登录网页服务已自动关闭' }, 'application/json; charset=utf-8', { Connection: 'close' });
     }
     if (busy) return send(409, { error: '正在操作官方客户端，请稍后重试' });
     busy = true;
@@ -437,7 +495,7 @@ function createServer(options) {
         const mode = parsedUrl.searchParams.get('mode') === 'password' ? 'password' : 'dingtalk';
         const captchaValid = Boolean(activeCaptcha && (Date.now() - activeCaptcha.createdAt) <= CAPTCHA_TTL_MS);
         if (mode === 'password') {
-          return send(200, {
+          const body = {
             status,
             mode,
             image: null,
@@ -447,32 +505,40 @@ function createServer(options) {
             captchaChallenge: captchaValid ? activeCaptcha.challenge : null,
             captchaWidth: captchaValid ? activeCaptcha.width : null,
             captchaHeight: captchaValid ? activeCaptcha.height : null,
-          });
+            closing: isLoggedIn(status),
+          };
+          if (isLoggedIn(status)) return sendAndClose(200, body, 'logged-in');
+          return send(200, body);
         }
-        const result = { status, mode, image: null, frames: [], sources: [], captchaActive: captchaValid };
+        const result = { status, mode, image: null, frames: [], sources: [], captchaActive: captchaValid, closing: isLoggedIn(status) };
         if (status === 'logout') {
           const current = await readDingTalk({ refresh: false });
           result.image = current.image || null;
           result.frames = current.frames || [];
           result.sources = current.sources || [];
         }
+        if (isLoggedIn(status)) return sendAndClose(200, result, 'logged-in');
         return send(200, result);
       }
 
       if (isRefresh) {
         activeCaptcha = null;
-        const result = { status, mode: 'dingtalk', image: null, frames: [], sources: [], captchaActive: false };
+        const result = { status, mode: 'dingtalk', image: null, frames: [], sources: [], captchaActive: false, closing: isLoggedIn(status) };
         if (status === 'logout') {
           const current = await readDingTalk({ refresh: true });
           result.image = current.image || null;
           result.frames = current.frames || [];
           result.sources = current.sources || [];
         }
+        if (isLoggedIn(status)) return sendAndClose(200, result, 'logged-in');
         return send(200, result);
       }
 
       if (isCaptcha) {
         if (status !== 'logout') {
+          if (isLoggedIn(status)) {
+            return sendAndClose(409, { error: '客户端当前状态为 ' + status + '，无需再次登录', status, closing: true }, 'logged-in');
+          }
           return send(409, { error: '客户端当前状态为 ' + status + '，无需再次登录', status });
         }
         const captcha = await fetchCaptcha();
@@ -532,13 +598,17 @@ function createServer(options) {
         const safeMessage = sanitizeMessage(authResult && authResult.message, secrets);
         const nextStatus = getLoginStatus();
         if (authResult && authResult.code === 0) {
-          return send(200, {
+          const willClose = isLoggedIn(nextStatus);
+          const body = {
             ok: true,
             code: 0,
             status: nextStatus,
+            closing: willClose,
             message: safeMessage || '密码与验证码校验成功',
             nextService: authResult.nextService || null,
-          });
+          };
+          if (willClose) return sendAndClose(200, body, 'logged-in');
+          return send(200, body);
         }
         return send(400, {
           ok: false,
@@ -558,20 +628,35 @@ function createServer(options) {
   });
   server.requestTimeout = 25000;
   server.on('error', error => console.error('[aTrust Web]', error.message));
+  server.on('listening', () => {
+    if (autoCloseTimeoutMs > 0) {
+      timeoutTimer = setTimeout(() => finalizeClose('timeout'), autoCloseTimeoutMs);
+      if (typeof timeoutTimer.unref === 'function') timeoutTimer.unref();
+    }
+    if (statusPollIntervalMs > 0) {
+      pollTimer = setInterval(() => {
+        if (busy || closing || closed) return;
+        try {
+          if (isLoggedIn(getLoginStatus())) {
+            scheduleClose('logged-in', closeDelayMs);
+          }
+        } catch (error) {
+          console.error('[aTrust Web] status check failed:', sanitizeMessage(error && error.message));
+        }
+      }, statusPollIntervalMs);
+      if (typeof pollTimer.unref === 'function') pollTimer.unref();
+    }
+  });
+  server.on('close', clearTimers);
   return server;
 }
 
 function start(electron, appConfig, mainWindow) {
-  const tokenPath = process.env.ATRUST_TOKEN_PATH || path.join(__dirname, 'token');
-  fs.mkdirSync(path.dirname(tokenPath), { recursive: true, mode: 0o700 });
-  const token = crypto.randomBytes(32).toString('hex');
-  fs.writeFileSync(tokenPath, token, { mode: 0o600 });
   let selectUntil = 0;
   const publicPorts = LISTEN_PORT === LOOPBACK_PORT
     ? DEFAULT_PUBLIC_PORTS
     : Array.from(new Set(DEFAULT_PUBLIC_PORTS.concat([LISTEN_PORT])));
   const server = createServer({
-    token,
     publicPorts,
     getLoginStatus: () => appConfig.getLoginStatus(),
     readDingTalk: async ({ refresh }) => {
@@ -685,7 +770,7 @@ function start(electron, appConfig, mainWindow) {
     },
   });
   server.listen(LISTEN_PORT, '127.0.0.1', () => {
-    console.log('[aTrust Web] Ready on container loopback port ' + LISTEN_PORT + ' (public ports: ' + publicPorts.join(',') + ')');
+    console.log('[aTrust Web] Ready on container loopback port ' + LISTEN_PORT + ' (public ports: ' + publicPorts.join(',') + ', auto-closes after login or ' + Math.round(AUTO_CLOSE_TIMEOUT_MS / 1000) + 's)');
   });
   electron.app.on('before-quit', () => server.close());
 }
