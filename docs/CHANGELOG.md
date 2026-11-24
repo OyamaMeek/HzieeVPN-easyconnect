@@ -656,3 +656,22 @@
 - **Git 提交**：`6a21af3 feat: remove login web token and auto-close after login or timeout`
 
 ---
+
+## [2026-11-24 14:13] 修复 aTrust 预登录会话过期导致验证码获取失败
+
+- **需求/问题描述**：
+  > 用户在免令牌登录页点击获取验证码时页面提示“官方 aTrust 客户端交互失败，请重试或检查客户端日志”，容器日志记录多次 `官方验证码返回内容不是有效图片`。
+
+- **实际实现的功能与改动**：
+  - 根因定位：aTrust 客户端登录窗口打开数分钟后预登录会话过期，`/passport/v1/public/checkCode` 会返回 HTTP 200 JSON（`{"code":75500002,"message":"会话无效"}`），而原有 `fetchCaptcha` 继续复用旧窗口未重载页面刷新会话。
+  - 后端修复（`deploy/hziee/atrust_qr.cjs`）：提取 `fetchCaptchaWithReload` 与 `describeInvalidCaptcha`，当现有登录窗口拉取验证码失败或返回非图片内容时自动调用 `closeMainWindow()` 与 `showLoginPagePreCheck()` 重载官方登录窗口刷新会话，并在重载后最多短暂重试 3 次（每次更新 `rnd` 参数）；若仍返回非图片 JSON，则记录脱敏后的错误码与提示信息。
+  - 测试与验证（`deploy/hziee/test_atrust_qr.cjs`）：新增 4 项单元测试覆盖正常复用、会话过期自动重载、重载后异步初始化重试与持续失败脱敏报错；本地 `node --check`、`node --test`（17/17）、`python3 -B -m unittest`（11/11）、`git diff --check` 全部通过；GitHub Actions 运行 `45338286752`（`test`/`image`/`atrust-image`）全部通过，并在 Shanghai-Aliyun 部署验证 `POST /password/captcha` 正常返回 272x192 图片。
+
+- **涉及文件**：
+  - `deploy/hziee/atrust_qr.cjs` (+113 / -26)
+  - `deploy/hziee/test_atrust_qr.cjs` (+106 / -0)
+  - `memory/agents.md`、`memory/verify.md`、`docs/CHANGELOG.md`
+
+- **Git 提交**：`e6e9902 fix: reload aTrust login window on expired captcha session`
+
+---
