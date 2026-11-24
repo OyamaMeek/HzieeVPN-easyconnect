@@ -88,6 +88,7 @@ test('sanitizes credentials from error messages', () => {
 });
 
 test('DingTalk selector matches both Chinese and English official client labels', () => {
+  assert.match(selectDingTalk, /钉钉扫码/);
   assert.match(selectDingTalk, /钉钉扫码登录/);
   assert.match(selectDingTalk, /scan with dingtalk/);
   assert.match(selectDingTalk, /dingtalk/);

@@ -165,6 +165,7 @@ const readQR = `(() => {
 const selectDingTalk = `(() => {
   const labels = new Set([
     '钉钉',
+    '钉钉扫码',
     '钉钉登录',
     '钉钉扫码登录',
     '钉钉认证',
@@ -173,15 +174,20 @@ const selectDingTalk = `(() => {
     'scan with dingtalk',
     'dingtalk authentication',
   ]);
-  const matches = element => {
+  const exactMatch = element => {
     if (!element.getClientRects().length) return false;
     const text = (element.textContent || '').trim().toLowerCase();
     const title = (element.getAttribute('title') || '').trim().toLowerCase();
     const aria = (element.getAttribute('aria-label') || '').trim().toLowerCase();
     return labels.has(text) || labels.has(title) || labels.has(aria);
   };
-  const elements = Array.from(document.querySelectorAll('button,a,[role="button"],span,div')).reverse();
-  const element = elements.find(matches);
+  const partialMatch = element => {
+    if (!element.getClientRects().length) return false;
+    const text = (element.textContent || '').trim().toLowerCase();
+    return text.length > 0 && text.length <= 20 && (text.includes('钉钉') || text.includes('dingtalk'));
+  };
+  const elements = Array.from(document.querySelectorAll('button,a,[role="button"],[role="tab"],li,p,span,div')).reverse();
+  const element = elements.find(exactMatch) || elements.find(partialMatch);
   if (element) { element.click(); return true; }
   return false;
 })()`;
