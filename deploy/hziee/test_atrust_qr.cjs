@@ -10,6 +10,7 @@ const {
   sanitizeMessage,
   validatePasswordLogin,
   selectDingTalk,
+  selectPassword,
   createServer,
 } = require('./atrust_qr.cjs');
 
@@ -92,6 +93,8 @@ test('DingTalk selector matches both Chinese and English official client labels'
   assert.match(selectDingTalk, /钉钉扫码登录/);
   assert.match(selectDingTalk, /scan with dingtalk/);
   assert.match(selectDingTalk, /dingtalk/);
+  assert.match(selectPassword, /上网账号/);
+  assert.match(selectPassword, /password/);
 });
 
 test('validates password login payload, coordinates, domain and challenge', () => {

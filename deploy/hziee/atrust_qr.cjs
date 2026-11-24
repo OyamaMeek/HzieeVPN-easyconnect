@@ -192,6 +192,36 @@ const selectDingTalk = `(() => {
   return false;
 })()`;
 
+const selectPassword = `(() => {
+  const labels = new Set([
+    '上网账号(i-xg)',
+    '上网账号',
+    '账号密码',
+    '密码登录',
+    '用户名密码',
+    'password',
+    'account',
+    'username',
+    'password login',
+  ]);
+  const exactMatch = element => {
+    if (!element.getClientRects().length) return false;
+    const text = (element.textContent || '').trim().toLowerCase();
+    const title = (element.getAttribute('title') || '').trim().toLowerCase();
+    const aria = (element.getAttribute('aria-label') || '').trim().toLowerCase();
+    return labels.has(text) || labels.has(title) || labels.has(aria);
+  };
+  const partialMatch = element => {
+    if (!element.getClientRects().length) return false;
+    const text = (element.textContent || '').trim().toLowerCase();
+    return text.length > 0 && text.length <= 24 && (text.includes('上网账号') || text.includes('密码登录') || text.includes('账号密码'));
+  };
+  const elements = Array.from(document.querySelectorAll('button,a,[role="button"],[role="tab"],li,p,span,div')).reverse();
+  const element = elements.find(exactMatch) || elements.find(partialMatch);
+  if (element) { element.click(); return true; }
+  return false;
+})()`;
+
 async function inspectWindow(contents, select) {
   const debuggerClient = contents.debugger;
   if (!debuggerClient.isAttached()) debuggerClient.attach('1.3');
@@ -253,7 +283,7 @@ function readCaptchaImage(electron, url, session) {
   });
 }
 
-async function findPasswordForm(electron) {
+async function findPasswordForm(electron, allowSwitch = false) {
   for (const contents of electron.webContents.getAllWebContents()) {
     if (contents.isDestroyed()) continue;
     let url;
@@ -263,15 +293,22 @@ async function findPasswordForm(electron) {
       continue;
     }
     if (url.protocol !== 'file:' || path.basename(url.pathname) !== 'index.html') continue;
-    const source = await contents.executeJavaScript(`(async () => {
-      if (!document.querySelector('input[type="password"]')) return null;
-      const scripts = Array.from(document.scripts).map(e => (e.src || e.dataset.src || '').split('/').pop().split('?')[0]);
-      const older = scripts.includes('index.8d430ddd.js');
-      const api = await import(older ? './assets/common.147d417f.js' : './assets/common.72564e07.js');
-      return { url: older ? api.z() : api.N(), master: older ? 'master.eedc111d.js' : 'master.c998f688.js' };
-    })()`);
-    if (source && source.url && source.master) {
-      return { contents, url: source.url, master: source.master };
+    try {
+      const source = await contents.executeJavaScript(`(async () => {
+        if (!document.querySelector('input[type="password"]')) return null;
+        const scripts = Array.from(document.scripts).map(e => (e.src || e.dataset.src || '').split('/').pop().split('?')[0]);
+        const older = scripts.includes('index.8d430ddd.js');
+        const api = await import(older ? './assets/common.147d417f.js' : './assets/common.72564e07.js');
+        return { url: older ? api.z() : api.N(), master: older ? 'master.eedc111d.js' : 'master.c998f688.js' };
+      })()`);
+      if (source && source.url && source.master) {
+        return { contents, url: source.url, master: source.master };
+      }
+      if (allowSwitch) {
+        await contents.executeJavaScript(selectPassword);
+      }
+    } catch (_) {
+      continue;
     }
   }
   return null;
@@ -530,13 +567,29 @@ function start(electron, appConfig, mainWindow) {
     },
     fetchCaptcha: async () => {
       selectUntil = 0;
-      let form = await findPasswordForm(electron);
+      let form = await findPasswordForm(electron, true);
+      const hasLocalLogin = electron.webContents.getAllWebContents().some(contents => {
+        if (contents.isDestroyed()) return false;
+        try {
+          const url = new URL(contents.getURL() || 'about:blank');
+          return url.protocol === 'file:' && path.basename(url.pathname) === 'index.html';
+        } catch (_) {
+          return false;
+        }
+      });
+      if (!form && hasLocalLogin) {
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          await delay(400);
+          form = await findPasswordForm(electron, attempt === 2);
+          if (form) break;
+        }
+      }
       if (!form) {
         mainWindow.closeMainWindow();
         mainWindow.showLoginPagePreCheck('https://vpn.hziee.edu.cn', false, false, true);
         for (let attempt = 0; attempt < 16; attempt += 1) {
           await delay(500);
-          form = await findPasswordForm(electron);
+          form = await findPasswordForm(electron, attempt >= 2);
           if (form) break;
         }
       }
@@ -610,6 +663,7 @@ module.exports = {
   sanitizeMessage,
   validatePasswordLogin,
   selectDingTalk,
+  selectPassword,
   createServer,
   start,
 };
