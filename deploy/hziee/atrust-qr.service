@@ -1,10 +1,14 @@
 [Unit]
-Description=aTrust client QR loopback forwarding
+Description=aTrust client login web high-port forwarding
 After=docker.service
 Requires=docker.service
 
 [Service]
-ExecStart=/usr/bin/socat TCP4-LISTEN:28081,bind=127.0.0.1,reuseaddr,fork "EXEC:/usr/bin/docker exec -i hziee-vpn-atrust-1 /usr/bin/socat STDIO TCP4\\:127.0.0.1\\:28081"
+Environment=ATRUST_WEB_BIND=0.0.0.0
+Environment=ATRUST_WEB_PORT=58081
+Environment=ATRUST_CONTAINER=hziee-vpn-atrust-1
+EnvironmentFile=-/etc/default/atrust-qr
+ExecStart=/usr/bin/socat TCP4-LISTEN:${ATRUST_WEB_PORT},bind=${ATRUST_WEB_BIND},reuseaddr,fork "EXEC:/usr/bin/docker exec -i ${ATRUST_CONTAINER} /usr/bin/socat STDIO TCP4\\:127.0.0.1\\:28081"
 Restart=on-failure
 RestartSec=3
 

@@ -91,6 +91,37 @@ class CaptchaWebTest(unittest.TestCase):
         self.assertEqual(self.request("POST", "/api/submit", payload, Origin="https://evil.example")[0], 403)
         self.assertEqual(self.request("POST", "/api/submit", payload, Origin="http://" + self.host)[0], 200)
 
+    def test_exposed_high_port_host_validation_and_token_enforcement(self):
+        server = CaptchaServer(("0.0.0.0", 0), self.session)
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        port = server.server_port
+        try:
+            def send(method, path, body=None, **headers):
+                headers.setdefault("Authorization", "Bearer " + self.session.token)
+                if body is not None:
+                    headers.setdefault("Content-Type", "application/json")
+                    body = json.dumps(body)
+                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+                conn.request(method, path, body, headers)
+                resp = conn.getresponse()
+                data = resp.status, resp.read()
+                conn.close()
+                return data
+
+            ext_host = f"203.0.113.10:{port}"
+            self.assertEqual(send("GET", "/api/state", Host=ext_host)[0], 200)
+            self.assertEqual(send("GET", "/api/state", Host=ext_host, Origin="http://" + ext_host)[0], 200)
+            self.assertEqual(send("GET", "/api/state", Host=ext_host, Origin="https://" + ext_host)[0], 200)
+            self.assertEqual(send("GET", "/api/state", Host=ext_host, Authorization="")[0], 403)
+            self.assertEqual(send("GET", "/api/state", Host=ext_host, Origin="http://evil.example")[0], 403)
+            self.assertEqual(send("GET", "/api/state", Host="203.0.113.10:80")[0], 403)
+            self.assertEqual(send("GET", "/api/state", Host="evil.example")[0], 403)
+        finally:
+            server.shutdown()
+            thread.join()
+            server.server_close()
+
     def test_invalid_coordinates_and_dimensions_are_rejected(self):
         payload = self.challenge()
         for coordinates in ([], [[-1, 0]], [[272, 0]], [[0, 192]], [[True, 2]], [[1.2, 2]], ["bad"], None):

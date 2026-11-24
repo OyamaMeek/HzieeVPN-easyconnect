@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1
+FROM hagb/docker-atrust@sha256:d564515395c2eabdbd78152ad47ea11e6d01a41b94435509ac1b8ddff79ffe26
+
+ARG COMMIT_ID=unknown
+
+COPY deploy/hziee/atrust_qr.cjs /opt/atrust-web/atrust_qr.cjs
+COPY deploy/hziee/atrust_qr.html /opt/atrust-web/atrust_qr.html
+COPY deploy/hziee/atrust_qr_entry.cjs /opt/atrust-web/atrust_qr_entry.cjs
+
+RUN cp /usr/share/sangfor/aTrust/resources/app/src/main.js \
+       /usr/share/sangfor/aTrust/resources/app/src/main.before-qr.js && \
+    cp /opt/atrust-web/atrust_qr_entry.cjs \
+       /usr/share/sangfor/aTrust/resources/app/src/main.js && \
+    grep -q 'FORCE_OPEN_PORTS=54631' /usr/local/bin/vpn-config.sh && \
+    sed -i 's/FORCE_OPEN_PORTS=54631/FORCE_OPEN_PORTS="54631 ${ATRUST_WEB_PORT:-58081}"/' \
+       /usr/local/bin/vpn-config.sh && \
+    grep -q 'ATRUST_WEB_PORT' /usr/local/bin/vpn-config.sh && \
+    chmod 0644 /opt/atrust-web/atrust_qr.cjs /opt/atrust-web/atrust_qr.html /opt/atrust-web/atrust_qr_entry.cjs
+
+ENV ATRUST_WEB_PORT=58081 \
+    ATRUST_LISTEN_PORT=58081 \
+    ATRUST_PUBLIC_PORTS=58081 \
+    ATRUST_TOKEN_PATH=/root/.atrust-qr/token
+
+EXPOSE 1080 8888 58081
+
+LABEL org.opencontainers.image.source="https://github.com/OyamaMeek/HzieeVPN-easyconnect" \
+      org.opencontainers.image.revision="${COMMIT_ID}"

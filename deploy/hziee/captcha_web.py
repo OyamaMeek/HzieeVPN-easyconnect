@@ -95,7 +95,35 @@ class CaptchaServer(ThreadingHTTPServer):
 
     def __init__(self, address, session):
         self.session = session
+        self.bind_host = address[0]
         super().__init__(address, CaptchaHandler)
+
+
+def is_loopback_bind(bind_host):
+    return bind_host in ("127.0.0.1", "localhost", "::1")
+
+
+def is_allowed_host(host, port, bind_host):
+    if not isinstance(host, str) or not host or len(host) > 255:
+        return False
+    if is_loopback_bind(bind_host):
+        return host in ("127.0.0.1:%s" % port, "localhost:%s" % port, "[::1]:%s" % port)
+    if any(ch in host for ch in " \t\r\n@/?#\\"):
+        return False
+    try:
+        parsed = urlsplit("http://" + host)
+        return (
+            parsed.username is None
+            and parsed.password is None
+            and parsed.path == ""
+            and parsed.query == ""
+            and parsed.fragment == ""
+            and bool(parsed.hostname)
+            and parsed.port == port
+            and parsed.netloc.lower() == host.lower()
+        )
+    except ValueError:
+        return False
 
 
 class CaptchaHandler(BaseHTTPRequestHandler):
@@ -121,12 +149,15 @@ class CaptchaHandler(BaseHTTPRequestHandler):
 
     def check_access(self, api):
         port = self.server.server_port
+        bind_host = getattr(self.server, "bind_host", "127.0.0.1")
         host = self.headers.get("Host")
-        if host not in ("127.0.0.1:%s" % port, "localhost:%s" % port):
-            raise RequestError(403, "仅允许通过本机地址访问。")
+        if not is_allowed_host(host, port, bind_host):
+            raise RequestError(403, "访问地址或端口不被允许。")
         origin = self.headers.get("Origin")
-        if origin is not None and origin != "http://" + host:
-            raise RequestError(403, "请求来源无效。")
+        if origin is not None:
+            allowed_origins = ("http://" + host,) if is_loopback_bind(bind_host) else ("http://" + host, "https://" + host)
+            if origin not in allowed_origins:
+                raise RequestError(403, "请求来源无效。")
         if api and not secrets.compare_digest(self.headers.get("Authorization", "").encode(), ("Bearer " + self.server.session.token).encode()):
             raise RequestError(403, "访问链接已失效，请使用终端本次输出的完整链接。")
 
@@ -174,8 +205,9 @@ class CaptchaHandler(BaseHTTPRequestHandler):
 
 def main():
     directory = Path(__file__).resolve().parent
-    parser = argparse.ArgumentParser(description="通过本机网页点选 aTrust 验证码并自动提交。")
-    parser.add_argument("--port", type=int, default=18081, help="本机网页端口，默认 18081")
+    parser = argparse.ArgumentParser(description="通过网页点选 aTrust 验证码并自动提交。")
+    parser.add_argument("--host", default="127.0.0.1", help="网页监听地址，默认 127.0.0.1；对外通过高位端口开放时可设为 0.0.0.0")
+    parser.add_argument("--port", type=int, default=18081, help="网页端口，默认 18081（对外开放时建议使用高位端口如 58081）")
     parser.add_argument("--image", type=Path, default=directory / "headless-data/captcha.png", help="客户端写入的验证码文件")
     parser.add_argument("command", nargs=argparse.REMAINDER, help="可选：-- 后接原生客户端命令；默认运行学校 Compose")
     args = parser.parse_args()
@@ -190,7 +222,7 @@ def main():
     os.umask(0o077)
     session = LoginSession(None, args.image.resolve())
     try:
-        server = CaptchaServer(("127.0.0.1", args.port), session)
+        server = CaptchaServer((args.host, args.port), session)
     except OSError as error:
         parser.exit(1, "无法启动验证码网页：%s\n" % error)
     try:
@@ -203,7 +235,11 @@ def main():
     session.process = process
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    print("验证码网页：http://127.0.0.1:%s/#%s" % (args.port, session.token), flush=True)
+    if args.host in ("0.0.0.0", "::"):
+        print("验证码网页（对外高位端口）：http://<服务器IP>:%s/#%s" % (args.port, session.token), flush=True)
+        print("验证码网页（本机地址）：http://127.0.0.1:%s/#%s" % (args.port, session.token), flush=True)
+    else:
+        print("验证码网页：http://%s:%s/#%s" % (args.host, args.port, session.token), flush=True)
     print("请保持此终端运行。其他短信或二次认证请在终端输入。", flush=True)
 
     def forward_input():

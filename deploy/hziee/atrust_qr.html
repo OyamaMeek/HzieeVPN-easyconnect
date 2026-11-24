@@ -2,38 +2,310 @@
 <html lang="zh-CN">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>aTrust 客户端 · 钉钉扫码</title>
+<title>aTrust 客户端 · 登录验证</title>
 <style>
-body{font:16px system-ui,sans-serif;background:#f5f5f5;color:#202124;margin:0;padding:32px 16px}main{max-width:420px;margin:5vh auto;background:white;border-radius:16px;padding:28px;text-align:center}h1{font-size:24px}img{display:block;width:260px;height:260px;max-width:100%;margin:20px auto;image-rendering:pixelated}p{line-height:1.6}button{font:inherit;padding:10px 18px;border:0;border-radius:8px;background:#1769d2;color:white;cursor:pointer}button:disabled{opacity:.5}small{display:block;color:#666;margin-top:24px}
+*{box-sizing:border-box}
+body{font:15px/1.5 system-ui,-apple-system,sans-serif;background:#f4f6f9;color:#1f2328;margin:0;padding:24px 14px}
+main{max-width:480px;margin:3vh auto;background:#fff;border-radius:16px;padding:24px;box-shadow:0 8px 30px rgba(0,0,0,.06)}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+h1{font-size:20px;margin:0}
+.badge{font-size:12px;padding:4px 10px;border-radius:999px;background:#eef2f7;color:#334155;font-weight:600}
+.badge.online{background:#dcfce7;color:#166534}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;background:#f1f5f9;padding:4px;border-radius:10px}
+.tabs button{border:0;background:transparent;color:#475569;padding:9px 12px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
+.tabs button.active{background:#fff;color:#0f172a;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+section[hidden],img[hidden]{display:none}
+.field{margin-bottom:12px;text-align:left}
+.field label{display:block;font-size:13px;color:#475569;margin-bottom:4px}
+.field input{width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
+.row{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+.stage{position:relative;display:inline-block;max-width:100%;margin:10px auto;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#f8fafc;user-select:none;touch-action:manipulation}
+.stage img{display:block;max-width:100%;height:auto;cursor:crosshair}
+.marker{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:#1769d2;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.28);pointer-events:none}
+.center{text-align:center}
+#qr{display:block;width:260px;height:260px;max-width:100%;margin:16px auto;image-rendering:pixelated;border:1px solid #e2e8f0;border-radius:10px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
+button.primary{font:inherit;padding:9px 16px;border:0;border-radius:8px;background:#1769d2;color:#fff;cursor:pointer;font-weight:600}
+button.secondary{font:inherit;padding:9px 14px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#1f2328;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.status{margin:12px 0;padding:10px 12px;border-radius:8px;background:#f8fafc;color:#334155;font-size:14px;min-height:42px}
+.status.ok{background:#dcfce7;color:#166534}
+.status.err{background:#fee2e2;color:#991b1b}
+small{display:block;color:#64748b;margin-top:18px;font-size:12px;text-align:center}
 </style>
-<style>img[hidden]{display:none}</style>
 <main>
-<h1>aTrust 客户端扫码</h1>
-<p>使用钉钉扫码，并在手机确认登录。</p>
-<img id="qr" alt="官方 aTrust 客户端当前钉钉二维码" hidden>
-<p id="status" role="status">正在读取官方 aTrust 客户端…</p>
-<button id="refresh">刷新客户端二维码</button>
-<small>认证与 VPN 连接由服务器上的官方 aTrust 客户端处理。请勿分享完整链接。</small>
+<header>
+  <h1>aTrust 客户端登录</h1>
+  <span id="clientBadge" class="badge">检查状态中</span>
+</header>
+<div class="tabs" role="tablist">
+  <button id="tabPassword" type="button" role="tab" aria-selected="true" class="active">密码登录</button>
+  <button id="tabDingTalk" type="button" role="tab" aria-selected="false">钉钉扫码</button>
+</div>
+
+<section id="panelPassword">
+  <div class="row">
+    <div class="field">
+      <label for="username">账号</label>
+      <input id="username" type="text" autocomplete="username" placeholder="学号或工号（默认附加 @ShenLan）">
+    </div>
+    <div class="field">
+      <label for="domain">登录域</label>
+      <input id="domain" type="text" value="ShenLan" placeholder="ShenLan">
+    </div>
+  </div>
+  <div class="field">
+    <label for="password">密码</label>
+    <input id="password" type="password" autocomplete="current-password" placeholder="输入密码（仅发送到服务器官方客户端）">
+  </div>
+  <div class="center">
+    <div id="captchaStage" class="stage" hidden>
+      <img id="captchaImg" alt="官方密码登录图形验证码">
+    </div>
+  </div>
+  <div id="pwdStatus" class="status" role="status">点击“获取验证码”从服务器官方客户端加载图形验证码，再依次点选提交。</div>
+  <div class="actions">
+    <button id="loadCaptcha" type="button" class="secondary">获取 / 刷新验证码</button>
+    <button id="undoPoint" type="button" class="secondary" disabled>撤销一点</button>
+    <button id="clearPoints" type="button" class="secondary" disabled>清空</button>
+    <button id="submitPassword" type="button" class="primary" disabled>提交密码登录</button>
+  </div>
+</section>
+
+<section id="panelDingTalk" class="center" hidden>
+  <p>二维码在服务器端从官方 aTrust 客户端获取并映射到此页面，请使用钉钉扫码确认。</p>
+  <img id="qr" alt="官方 aTrust 客户端当前钉钉二维码" hidden>
+  <div id="qrStatus" class="status" role="status">正在读取官方 aTrust 客户端…</div>
+  <div class="actions">
+    <button id="refreshQr" type="button" class="primary">刷新客户端二维码</button>
+  </div>
+</section>
+
+<small>所有认证与 VPN 隧道均在服务器官方 aTrust 客户端完成。请妥善保管带令牌的完整链接，勿分享给他人。</small>
 </main>
 <script>
-const token=location.hash.slice(1), message=document.getElementById('status'), image=document.getElementById('qr'), button=document.getElementById('refresh');
-let timer, pending=false;
-async function update(refresh=false){
-  if(pending)return;
-  pending=true;button.disabled=true;
-  try{
-    const response=await fetch(refresh?'/refresh':'/status',{method:refresh?'POST':'GET',headers:{Authorization:'Bearer '+token}});
-    const data=await response.json();
-    if(!response.ok)throw new Error(data.error||'读取失败');
-    image.hidden=!data.image;
-    if(data.image){image.src=data.image;message.textContent='这是官方 aTrust 客户端当前的二维码，请使用钉钉扫码。';}
-    else if(['online','login','offline','disconnect'].includes(data.status)){message.textContent='aTrust 客户端状态：'+data.status+'。登录状态已变化，VPN 连通性仍需检查。';clearInterval(timer);}
-    else message.textContent='官方 aTrust 尚未显示二维码，正在等待客户端钉钉登录页面。';
-  }catch(error){image.hidden=true;message.textContent=error.message;}
-  finally{pending=false;button.disabled=false;}
+const token = location.hash.slice(1);
+const badge = document.getElementById('clientBadge');
+const tabPassword = document.getElementById('tabPassword');
+const tabDingTalk = document.getElementById('tabDingTalk');
+const panelPassword = document.getElementById('panelPassword');
+const panelDingTalk = document.getElementById('panelDingTalk');
+const usernameInput = document.getElementById('username');
+const domainInput = document.getElementById('domain');
+const passwordInput = document.getElementById('password');
+const captchaStage = document.getElementById('captchaStage');
+const captchaImg = document.getElementById('captchaImg');
+const pwdStatus = document.getElementById('pwdStatus');
+const loadCaptchaBtn = document.getElementById('loadCaptcha');
+const undoBtn = document.getElementById('undoPoint');
+const clearBtn = document.getElementById('clearPoints');
+const submitPwdBtn = document.getElementById('submitPassword');
+const qrImg = document.getElementById('qr');
+const qrStatus = document.getElementById('qrStatus');
+const refreshQrBtn = document.getElementById('refreshQr');
+
+let mode = 'password';
+let pending = false;
+let timer = null;
+let captcha = null;
+let points = [];
+
+function authHeaders(extra = {}) {
+  return Object.assign({ Authorization: 'Bearer ' + token }, extra);
 }
-button.addEventListener('click',()=>update(true));
-window.addEventListener('hashchange',()=>location.reload());
-timer=setInterval(()=>update(),3000);update();
+
+function setBadge(status) {
+  badge.textContent = '客户端：' + (status || '未知');
+  badge.className = 'badge' + (status === 'online' ? ' online' : '');
+}
+
+function setBox(element, text, kind = '') {
+  element.textContent = text;
+  element.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function renderMarkers() {
+  for (const node of captchaStage.querySelectorAll('.marker')) node.remove();
+  if (!captcha) {
+    undoBtn.disabled = true;
+    clearBtn.disabled = true;
+    submitPwdBtn.disabled = true;
+    return;
+  }
+  points.forEach((pt, idx) => {
+    const dot = document.createElement('span');
+    dot.className = 'marker';
+    dot.textContent = String(idx + 1);
+    dot.style.left = (pt[0] / captcha.width * 100) + '%';
+    dot.style.top = (pt[1] / captcha.height * 100) + '%';
+    captchaStage.appendChild(dot);
+  });
+  undoBtn.disabled = pending || points.length === 0;
+  clearBtn.disabled = pending || points.length === 0;
+  submitPwdBtn.disabled = pending || points.length === 0;
+}
+
+function setMode(nextMode) {
+  mode = nextMode;
+  const isPwd = mode === 'password';
+  tabPassword.classList.toggle('active', isPwd);
+  tabPassword.setAttribute('aria-selected', String(isPwd));
+  tabDingTalk.classList.toggle('active', !isPwd);
+  tabDingTalk.setAttribute('aria-selected', String(!isPwd));
+  panelPassword.hidden = !isPwd;
+  panelDingTalk.hidden = isPwd;
+  pollStatus();
+}
+
+async function pollStatus() {
+  if (pending) return;
+  try {
+    const response = await fetch('/status?mode=' + mode, { headers: authHeaders() });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || '读取状态失败');
+    setBadge(data.status);
+    if (mode === 'dingtalk') {
+      qrImg.hidden = !data.image;
+      if (data.image) {
+        qrImg.src = data.image;
+        setBox(qrStatus, '这是服务器官方 aTrust 客户端当前二维码，请使用钉钉扫码确认。');
+      } else if (['online', 'login'].includes(data.status)) {
+        setBox(qrStatus, 'aTrust 客户端状态：' + data.status + '，已登录。请检查代理连通性。', 'ok');
+      } else {
+        setBox(qrStatus, '官方客户端尚未显示二维码，请点击“刷新客户端二维码”。');
+      }
+    } else if (['online', 'login'].includes(data.status)) {
+      setBox(pwdStatus, 'aTrust 客户端状态：' + data.status + '，当前已登录。', 'ok');
+    }
+  } catch (error) {
+    setBox(mode === 'password' ? pwdStatus : qrStatus, error.message, 'err');
+  }
+}
+
+async function fetchCaptcha() {
+  if (pending) return;
+  pending = true;
+  loadCaptchaBtn.disabled = true;
+  renderMarkers();
+  setBox(pwdStatus, '正在从服务器官方客户端获取验证码…');
+  try {
+    const response = await fetch('/password/captcha', { method: 'POST', headers: authHeaders() });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || '获取验证码失败');
+    setBadge(data.status);
+    captcha = { challenge: data.challenge, width: data.width, height: data.height };
+    points = [];
+    captchaImg.src = data.image;
+    captchaStage.hidden = false;
+    setBox(pwdStatus, '请按图片提示依次点选目标位置，然后点击“提交密码登录”。');
+  } catch (error) {
+    captcha = null;
+    points = [];
+    captchaStage.hidden = true;
+    setBox(pwdStatus, error.message, 'err');
+  } finally {
+    pending = false;
+    loadCaptchaBtn.disabled = false;
+    renderMarkers();
+  }
+}
+
+async function submitPasswordLogin() {
+  if (pending || !captcha) return;
+  const username = usernameInput.value.trim();
+  const domain = domainInput.value.trim();
+  const password = passwordInput.value;
+  if (!username || !password) {
+    setBox(pwdStatus, '请先填写账号和密码。', 'err');
+    return;
+  }
+  if (!points.length) {
+    setBox(pwdStatus, '请先在验证码图片上点选位置。', 'err');
+    return;
+  }
+  pending = true;
+  loadCaptchaBtn.disabled = true;
+  renderMarkers();
+  setBox(pwdStatus, '正在向服务器官方客户端提交密码与验证码…');
+  try {
+    const response = await fetch('/password/login', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        username,
+        domain,
+        password,
+        challenge: captcha.challenge,
+        width: captcha.width,
+        height: captcha.height,
+        coordinates: points,
+      }),
+    });
+    const data = await response.json();
+    captcha = null;
+    points = [];
+    captchaStage.hidden = true;
+    if (data.status) setBadge(data.status);
+    if (response.ok && data.ok) {
+      passwordInput.value = '';
+      setBox(pwdStatus, '登录成功，客户端状态：' + (data.status || 'online') + '。', 'ok');
+    } else {
+      setBox(pwdStatus, (data.error || '登录失败') + '（验证码已失效，请重新获取）', 'err');
+    }
+  } catch (error) {
+    setBox(pwdStatus, error.message, 'err');
+  } finally {
+    pending = false;
+    loadCaptchaBtn.disabled = false;
+    renderMarkers();
+  }
+}
+
+async function refreshDingTalk() {
+  if (pending) return;
+  pending = true;
+  refreshQrBtn.disabled = true;
+  setBox(qrStatus, '正在通知服务器官方客户端刷新钉钉二维码…');
+  try {
+    const response = await fetch('/refresh', { method: 'POST', headers: authHeaders() });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || '刷新失败');
+    setBadge(data.status);
+    qrImg.hidden = !data.image;
+    if (data.image) {
+      qrImg.src = data.image;
+      setBox(qrStatus, '已获取服务器最新钉钉二维码，请使用钉钉扫码确认。');
+    } else {
+      setBox(qrStatus, '已触发官方客户端打开钉钉登录，等待二维码生成…');
+    }
+  } catch (error) {
+    qrImg.hidden = true;
+    setBox(qrStatus, error.message, 'err');
+  } finally {
+    pending = false;
+    refreshQrBtn.disabled = false;
+  }
+}
+
+captchaImg.addEventListener('click', event => {
+  if (!captcha || pending || points.length >= 10) return;
+  const rect = captchaImg.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const x = Math.max(0, Math.min(captcha.width - 1, Math.round((event.clientX - rect.left) * captcha.width / rect.width)));
+  const y = Math.max(0, Math.min(captcha.height - 1, Math.round((event.clientY - rect.top) * captcha.height / rect.height)));
+  points.push([x, y]);
+  renderMarkers();
+});
+
+tabPassword.addEventListener('click', () => setMode('password'));
+tabDingTalk.addEventListener('click', () => setMode('dingtalk'));
+loadCaptchaBtn.addEventListener('click', fetchCaptcha);
+undoBtn.addEventListener('click', () => { points.pop(); renderMarkers(); });
+clearBtn.addEventListener('click', () => { points = []; renderMarkers(); });
+submitPwdBtn.addEventListener('click', submitPasswordLogin);
+refreshQrBtn.addEventListener('click', refreshDingTalk);
+window.addEventListener('hashchange', () => location.reload());
+timer = setInterval(pollStatus, 3000);
+pollStatus();
 </script>
 </html>

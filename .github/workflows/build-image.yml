@@ -10,6 +10,7 @@ on:
       - go.mod
       - go.sum
       - Dockerfile
+      - Dockerfile.atrust
       - .dockerignore
       - deploy/hziee/**
       - .github/workflows/build-image.yml
@@ -37,6 +38,7 @@ jobs:
         run: |
           docker compose -f deploy/hziee/compose.headless.yaml config --quiet
           docker compose -f deploy/hziee/compose.dingtalk.yaml config --quiet
+          docker compose -f deploy/hziee/compose.atrust.yaml config --quiet
 
   image:
     needs: test
@@ -76,3 +78,52 @@ jobs:
         env:
           IMAGE: ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
         run: docker run --rm "$IMAGE" -version
+
+  atrust-image:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Set image name
+        id: image
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "name=ghcr.io/${REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish aTrust login web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.atrust
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ steps.image.outputs.name }}:atrust-latest
+            ${{ steps.image.outputs.name }}:atrust-sha-${{ github.sha }}
+          build-args:
+            COMMIT_ID=${{ github.sha }}
+          cache-from: type=gha,scope=atrust
+          cache-to: type=gha,scope=atrust,mode=max
+      - name: Smoke test published aTrust image
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}:atrust-sha-${{ github.sha }}
+        run: |
+          docker run --rm --entrypoint /bin/bash "$IMAGE" -c '
+            set -euo pipefail
+            test -f /opt/atrust-web/atrust_qr.cjs
+            test -f /opt/atrust-web/atrust_qr.html
+            test -f /usr/share/sangfor/aTrust/resources/app/src/main.before-qr.js
+            grep -q "/opt/atrust-web/atrust_qr.cjs" /usr/share/sangfor/aTrust/resources/app/src/main.js
+            eval "$(vpn-config.sh)"
+            test "$FORCE_OPEN_PORTS" = "54631 58081"
+          '

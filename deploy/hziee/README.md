@@ -2,26 +2,31 @@
 
 学校入口：<https://vpn.hziee.edu.cn>。当前 HK-AK 使用官方 aTrust 客户端及独立二维码网页；下文另保留 Go 客户端的部署说明。源码版本和许可证见[源码来源](../../SOURCE.md)。
 
-## 官方 aTrust 客户端二维码
+## 官方 aTrust 客户端统一登录网页（密码验证码 + 钉钉扫码）
 
-当前容器为 `hziee-vpn-atrust-1`，镜像为 `hagb/docker-atrust`，已检查的客户端资源版本为 2.5.16.20。`atrust_qr.cjs` 在原 Electron 界面进程读取当前钉钉二维码，`atrust_qr.html` 只展示二维码及客户端状态。网页没有另起学校认证会话，扫码回调、登录和 VPN 隧道继续由官方客户端处理。
+当前容器为 `hziee-vpn-atrust-1`，镜像为 `hagb/docker-atrust`，已检查的客户端资源版本为 2.5.16.20。`atrust_qr.cjs` 与 `atrust_qr.html` 在原 Electron 界面进程提供同一套登录网页，支持两种模式：
 
-网页仅监听服务器 `127.0.0.1:28081`；`atrust-qr.service` 通过 Docker 转发到客户端容器的回环端口。Termius 中的 `HZIEE DingTalk` 转发本机 28081 到服务器同名端口。获取本轮访问链接：
+- **密码登录**：服务端直接通过官方 Electron 会话抓取图形验证码图片并映射到网页，用户在网页输入账号密码、按顺序点选验证码后，由服务器官方客户端内原有 `master` 密码模块完成加密与认证提交；每个验证码 `challenge` 仅允许提交一次，错误返回会脱敏账号与密码。
+- **钉钉扫码**：服务端直接从官方 Electron 客户端钉钉登录框架提取二维码 PNG 并映射到网页，扫码回调、登录和 VPN 隧道均由服务器官方客户端处理，不在用户浏览器加载钉钉登录页。
+
+容器内网页继续监听 `127.0.0.1:28081`；宿主机 `atrust-qr.service` 默认通过高位端口 `58081`（`ATRUST_WEB_BIND=0.0.0.0`、`ATRUST_WEB_PORT=58081`，可在 `/etc/default/atrust-qr` 覆盖）对外转发到容器回环端口。所有接口仍强制校验 `Host` 白名单、同源 `Origin` 与 256 位随机 `Bearer` 令牌。获取本轮高位端口访问链接：
 
 ```bash
-printf 'http://127.0.0.1:28081/#'
+printf 'http://<服务器IP>:58081/#'
 cat /opt/hziee-vpn/data/.atrust-qr/token
 printf '\n'
 ```
 
-保留完整链接中的随机令牌，不要分享或写入公开日志。网页点击“刷新客户端二维码”会在官方客户端中打开钉钉登录或刷新过期二维码。用钉钉扫码并在手机确认后，网页显示客户端状态变化；VPN 连通性需要另外验证。原客户端代理仍使用服务器回环 1080/8888，原有 Termius 代理转发保持不变。
+如需继续仅经 SSH 隧道访问，可将 `/etc/default/atrust-qr` 设为 `ATRUST_WEB_BIND=127.0.0.1` 与 `ATRUST_WEB_PORT=28081`；若修改为其他高位端口，需在容器环境变量 `ATRUST_PUBLIC_PORTS` 中加入该端口。对外开放高位端口时，请仅在云服务器安全组或防火墙放行本人来源 IP，并在完成登录后按需关闭，同时妥善保管带 `#token` 的完整链接，避免在不安全网络明文传输密码（建议前置 TLS 反向代理或仅在可信链路使用）。
+
+在网页“密码登录”标签页点击“获取 / 刷新验证码”加载官方图形验证码并点选提交；在“钉钉扫码”标签页点击“刷新客户端二维码”触发官方客户端打开或刷新钉钉二维码。原客户端代理仍使用服务器回环 1080/8888，原有代理转发保持不变。
 
 组件文件位于 `/opt/hziee-vpn/data/.atrust-qr/`。原主文件备份为 `/opt/hziee-atrust-qr/main.js.before-qr`，客户端内备份为 `src/main.before-qr.js`；`src/main.js` 使用本仓库包装入口调用原主文件，包清单保持原内容。部署文件位于 `/opt/hziee-atrust-qr`。日常检查：
 
 ```bash
 systemctl status atrust-qr.service --no-pager
 docker inspect -f '{{.State.Status}}' hziee-vpn-atrust-1
-curl --fail http://127.0.0.1:28081/ --output /dev/null
+curl --fail http://127.0.0.1:58081/ --output /dev/null
 ```
 
 重启官方客户端会轮换访问令牌，需重新获取链接。重新创建容器或升级官方客户端后，需要重新检查并接入组件。恢复原客户端入口时，使用已保存的备份：
@@ -101,7 +106,7 @@ docker compose -f compose.headless.yaml logs --tail=50 -f vpn
 
 ## 验证码网页
 
-在本目录执行 `python3 captcha_web.py`。网页固定监听 `127.0.0.1:18081`，启动链接带随机令牌，复制时需保留 `#` 及后面的内容。网页显示当前验证码与连接状态，支持顺序点选、撤销、清空、触摸操作和自动换图；聚焦图片后可用方向键移动、回车确认。坐标按原图尺寸换算，提交内容自动写入客户端 stdin。
+在本目录执行 `python3 captcha_web.py`。默认监听 `127.0.0.1:18081`；如需在服务器上通过高位端口直接放行验证码页面，可执行 `python3 captcha_web.py --host 0.0.0.0 --port 58081`（并在安全组放行对应高位端口）。启动链接带随机令牌，复制时需保留 `#` 及后面的内容。网页显示当前验证码与连接状态，支持顺序点选、撤销、清空、触摸操作和自动换图；聚焦图片后可用方向键移动、回车确认。坐标按原图尺寸换算，提交内容自动写入客户端 stdin。
 
 图片保存在 `headless-data/captcha.png`。网页不提供账号密码或会话文件下载；脚本和登录进程退出后网页服务结束。同一主机上只启动一份使用这些代理端口的客户端。
 
@@ -156,6 +161,7 @@ docker compose -f compose.headless.yaml up -d
 在项目根目录运行：
 
 ```bash
+node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs
 python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v
 go test ./...
 ```

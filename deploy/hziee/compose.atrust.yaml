@@ -1,0 +1,24 @@
+name: hziee-vpn
+services:
+  atrust:
+    image: ghcr.io/oyamameek/hzieevpn-easyconnect:atrust-latest
+    restart: unless-stopped
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "127.0.0.1:1080:1080"
+      - "127.0.0.1:8888:8888"
+      - "0.0.0.0:${ATRUST_WEB_PORT:-58081}:${ATRUST_WEB_PORT:-58081}"
+    environment:
+      - ATRUST_WEB_PORT=${ATRUST_WEB_PORT:-58081}
+      - ATRUST_LISTEN_PORT=${ATRUST_WEB_PORT:-58081}
+      - ATRUST_PUBLIC_PORTS=${ATRUST_WEB_PORT:-58081}
+    volumes:
+      - /opt/hziee-vpn/data:/root
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
