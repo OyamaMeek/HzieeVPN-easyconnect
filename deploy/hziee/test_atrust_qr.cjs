@@ -15,6 +15,7 @@ const {
   validatePasswordLogin,
   selectDingTalk,
   selectPassword,
+  fetchCaptchaWithReload,
   createServer,
 } = require('./atrust_qr.cjs');
 
@@ -351,4 +352,109 @@ test('atrust_qr.html hides hidden containers, omits token gate, and handles auto
   const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
   assert.ok(scriptMatch, 'expected inline script block');
   assert.doesNotThrow(() => new Function(scriptMatch[1]));
+});
+
+test('fetchCaptchaWithReload reuses valid form without reloading window', async () => {
+  let reloadCalls = 0;
+  const form = { url: 'https://vpn.hziee.edu.cn/passport/v1/public/checkCode?rnd=1', master: 'master.js', contents: { session: 's1' } };
+  const result = await fetchCaptchaWithReload({
+    findForm: async () => form,
+    reloadForm: async () => {
+      reloadCalls += 1;
+      return form;
+    },
+    readImage: async () => Buffer.from('valid-image'),
+    decodeImage: () => ({
+      isEmpty: () => false,
+      getSize: () => ({ width: 272, height: 192 }),
+      toPNG: () => Buffer.from([1, 2, 3]),
+    }),
+    wait: async () => {},
+  });
+  assert.equal(reloadCalls, 0);
+  assert.equal(result.width, 272);
+  assert.equal(result.height, 192);
+  assert.equal(result.image, 'data:image/png;base64,' + Buffer.from([1, 2, 3]).toString('base64'));
+});
+
+test('fetchCaptchaWithReload reloads login window when stale session returns non-image JSON', async () => {
+  let reloadCalls = 0;
+  let readCalls = 0;
+  const staleForm = { url: 'https://vpn.hziee.edu.cn/passport/v1/public/checkCode?rnd=1', master: 'master.js', contents: { session: 'stale' } };
+  const freshForm = { url: 'https://vpn.hziee.edu.cn/passport/v1/public/checkCode?rnd=2', master: 'master.js', contents: { session: 'fresh' } };
+  const result = await fetchCaptchaWithReload({
+    findForm: async () => staleForm,
+    reloadForm: async () => {
+      reloadCalls += 1;
+      return freshForm;
+    },
+    readImage: async (_url, session) => {
+      readCalls += 1;
+      if (session === 'stale') {
+        return Buffer.from(JSON.stringify({ code: 75500002, message: '会话无效' }));
+      }
+      return Buffer.from('fresh-image');
+    },
+    decodeImage: bytes => {
+      if (bytes.toString('utf8').startsWith('{')) {
+        return { isEmpty: () => true };
+      }
+      return {
+        isEmpty: () => false,
+        getSize: () => ({ width: 272, height: 192 }),
+        toPNG: () => Buffer.from([4, 5, 6]),
+      };
+    },
+    wait: async () => {},
+  });
+  assert.equal(reloadCalls, 1);
+  assert.equal(readCalls, 2);
+  assert.equal(result.contents, freshForm.contents);
+  assert.equal(result.width, 272);
+});
+
+test('fetchCaptchaWithReload retries briefly after reload if session initializes asynchronously', async () => {
+  let reloadCalls = 0;
+  let readCalls = 0;
+  const freshForm = { url: 'https://vpn.hziee.edu.cn/passport/v1/public/checkCode?rnd=2', master: 'master.js', contents: { session: 'fresh' } };
+  const result = await fetchCaptchaWithReload({
+    findForm: async () => null,
+    reloadForm: async () => {
+      reloadCalls += 1;
+      return freshForm;
+    },
+    readImage: async () => {
+      readCalls += 1;
+      if (readCalls === 1) {
+        return Buffer.from(JSON.stringify({ code: 75500002, message: '会话无效' }));
+      }
+      return Buffer.from('ready-image');
+    },
+    decodeImage: bytes => (bytes.toString('utf8').startsWith('{')
+      ? { isEmpty: () => true }
+      : { isEmpty: () => false, getSize: () => ({ width: 272, height: 192 }), toPNG: () => Buffer.from([7, 8]) }),
+    wait: async () => {},
+  });
+  assert.equal(reloadCalls, 1);
+  assert.equal(readCalls, 2);
+  assert.equal(result.width, 272);
+});
+
+test('fetchCaptchaWithReload fails with sanitized hint if captcha stays invalid after reload', async () => {
+  let reloadCalls = 0;
+  const form = { url: 'https://vpn.hziee.edu.cn/passport/v1/public/checkCode?rnd=1', master: 'master.js', contents: { session: 's1' } };
+  await assert.rejects(
+    () => fetchCaptchaWithReload({
+      findForm: async () => form,
+      reloadForm: async () => {
+        reloadCalls += 1;
+        return form;
+      },
+      readImage: async () => Buffer.from(JSON.stringify({ code: 75500002, message: '会话无效' })),
+      decodeImage: () => ({ isEmpty: () => true }),
+      wait: async () => {},
+    }),
+    /官方验证码返回内容不是有效图片.*75500002.*会话无效/,
+  );
+  assert.equal(reloadCalls, 1);
 });

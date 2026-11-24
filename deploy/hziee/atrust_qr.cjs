@@ -356,6 +356,94 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function withFreshRnd(rawUrl) {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.searchParams.has('rnd')) {
+      parsed.searchParams.set('rnd', String(Date.now()));
+    }
+    return parsed.toString();
+  } catch (_) {
+    return rawUrl;
+  }
+}
+
+function describeInvalidCaptcha(bytes) {
+  const base = '官方验证码返回内容不是有效图片';
+  if (!Buffer.isBuffer(bytes) || !bytes.length) return base;
+  const text = bytes.slice(0, 512).toString('utf8').trim();
+  if (!text.startsWith('{')) return base;
+  try {
+    const parsed = JSON.parse(text);
+    const parts = [];
+    if (parsed && (typeof parsed.code === 'number' || typeof parsed.code === 'string')) {
+      parts.push('code=' + String(parsed.code));
+    }
+    if (parsed && typeof parsed.message === 'string' && parsed.message.trim()) {
+      parts.push(sanitizeMessage(parsed.message.trim()));
+    }
+    return parts.length ? base + ' (' + parts.join(': ') + ')' : base;
+  } catch (_) {
+    return base;
+  }
+}
+
+async function loadCaptchaFromForm(form, readImage, decodeImage, refreshRnd = false) {
+  const targetUrl = refreshRnd ? withFreshRnd(form.url) : form.url;
+  const bytes = await readImage(targetUrl, form.contents && form.contents.session);
+  const parsed = decodeImage(bytes);
+  if (!parsed || parsed.isEmpty()) {
+    throw new Error(describeInvalidCaptcha(bytes));
+  }
+  const size = parsed.getSize();
+  return {
+    image: 'data:image/png;base64,' + parsed.toPNG().toString('base64'),
+    width: size.width,
+    height: size.height,
+    master: form.master,
+    contents: form.contents,
+  };
+}
+
+async function fetchCaptchaWithReload({
+  findForm,
+  reloadForm,
+  readImage,
+  decodeImage,
+  wait = delay,
+  postReloadAttempts = 3,
+  postReloadDelayMs = 600,
+}) {
+  let form = await findForm();
+  let reloaded = false;
+  if (!form) {
+    form = await reloadForm();
+    reloaded = true;
+  }
+  if (!form) throw new Error('未找到官方客户端密码登录页面');
+
+  if (!reloaded) {
+    try {
+      return await loadCaptchaFromForm(form, readImage, decodeImage, false);
+    } catch (_) {
+      form = await reloadForm();
+      reloaded = true;
+      if (!form) throw new Error('未找到官方客户端密码登录页面');
+    }
+  }
+
+  let lastError = null;
+  for (let attempt = 0; attempt < postReloadAttempts; attempt += 1) {
+    if (attempt > 0) await wait(postReloadDelayMs);
+    try {
+      return await loadCaptchaFromForm(form, readImage, decodeImage, attempt > 0);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error('官方验证码返回内容不是有效图片');
+}
+
 function readJsonBody(request, maxBytes = LOGIN_BODY_MAX_BYTES) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -690,39 +778,37 @@ function start(electron, appConfig, mainWindow) {
     },
     fetchCaptcha: async () => {
       selectUntil = 0;
-      let form = await findPasswordForm(electron, true);
-      const hasLocalLogin = electron.webContents.getAllWebContents().some(contents => {
-        if (contents.isDestroyed()) return false;
-        return isLoginPageUrl(contents.getURL() || 'about:blank');
-      });
-      if (!form && hasLocalLogin) {
-        for (let attempt = 0; attempt < 6; attempt += 1) {
-          await delay(400);
-          form = await findPasswordForm(electron, attempt === 2);
-          if (form) break;
+      const findForm = async () => {
+        let form = await findPasswordForm(electron, true);
+        const hasLocalLogin = electron.webContents.getAllWebContents().some(contents => {
+          if (contents.isDestroyed()) return false;
+          return isLoginPageUrl(contents.getURL() || 'about:blank');
+        });
+        if (!form && hasLocalLogin) {
+          for (let attempt = 0; attempt < 6; attempt += 1) {
+            await delay(400);
+            form = await findPasswordForm(electron, attempt === 2);
+            if (form) break;
+          }
         }
-      }
-      if (!form) {
+        return form;
+      };
+      const reloadForm = async () => {
         mainWindow.closeMainWindow();
         mainWindow.showLoginPagePreCheck('https://vpn.hziee.edu.cn', false, false, true);
         for (let attempt = 0; attempt < 16; attempt += 1) {
           await delay(500);
-          form = await findPasswordForm(electron, attempt >= 2);
-          if (form) break;
+          const form = await findPasswordForm(electron, attempt >= 2);
+          if (form) return form;
         }
-      }
-      if (!form) throw new Error('未找到官方客户端密码登录页面');
-      const bytes = await readCaptchaImage(electron, form.url, form.contents.session);
-      const parsed = electron.nativeImage.createFromBuffer(bytes);
-      if (parsed.isEmpty()) throw new Error('官方验证码返回内容不是有效图片');
-      const size = parsed.getSize();
-      return {
-        image: 'data:image/png;base64,' + parsed.toPNG().toString('base64'),
-        width: size.width,
-        height: size.height,
-        master: form.master,
-        contents: form.contents,
+        return null;
       };
+      return fetchCaptchaWithReload({
+        findForm,
+        reloadForm,
+        readImage: (url, session) => readCaptchaImage(electron, url, session),
+        decodeImage: bytes => electron.nativeImage.createFromBuffer(bytes),
+      });
     },
     submitPassword: async ({ account, username, password, answer, master, contents }) => {
       if (!contents || contents.isDestroyed()) {
@@ -787,6 +873,7 @@ module.exports = {
   validatePasswordLogin,
   selectDingTalk,
   selectPassword,
+  fetchCaptchaWithReload,
   createServer,
   start,
 };
