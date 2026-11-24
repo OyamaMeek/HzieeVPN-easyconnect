@@ -4,7 +4,7 @@
 
 - [x] 重写根目录 `README.md`，补齐三种部署方案、前置条件、登录流程、代理验证与远程转发、环境变量、日常运维、构建测试及故障排查指南。
 - [x] 核验 `README.md` 相对链接、锚点、配置参数一致性、脱敏规则与文本规范，运行仓库验证检查。
-- [ ] 更新 `docs/CHANGELOG.md` 与 `memory/`，创建原子化提交并推送至 `origin/master`。
+- [x] 更新 `docs/CHANGELOG.md` 与 `memory/`，创建原子化提交（`7fc67b3 docs: add detailed deployment guide to README`）并推送至 `origin/master`。
 
 ## aTrust 镜像内置每分钟保活与精简无关组件（2026-11-24）
 
