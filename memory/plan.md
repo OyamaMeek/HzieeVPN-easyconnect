@@ -1,5 +1,12 @@
 # 当前设计与计划
 
+## 统一登录页免令牌直连与自动关闭（2026-11-24）
+
+1. 移除 `deploy/hziee/atrust_qr.cjs`、`deploy/hziee/atrust_qr.html` 与 `Dockerfile.atrust` 中的访问令牌生成、校验与页内输入区，保留 `Host` 白名单、同源 `Origin` 校验与验证码单次 `challenge` 校验。
+2. 在 `deploy/hziee/atrust_qr.cjs` 增加自动关闭生命周期：客户端进入 `online`/`login`（密码登录成功、`/status` 检测到已登录或后台状态轮询检测到已登录）后自动关闭 HTTP 服务并释放端口；未登录时默认 10 分钟超时自动关闭。
+3. 在 `deploy/hziee/atrust_qr.html` 处理服务端自动关闭状态，登录完成后停止轮询、禁用操作按钮并提示服务已自动关闭。
+4. 更新 `deploy/hziee/test_atrust_qr.cjs` 覆盖免令牌访问、`Host`/`Origin` 校验、密码登录后自动关闭、后台扫码上线自动关闭、超时自动关闭和前端脚本检查，并同步更新 `deploy/hziee/README.md`。
+
 ## 高位端口统一登录网页：密码验证码与服务端钉钉扫码（2026-11-24）
 
 1. 扩展官方 aTrust 客户端内嵌网页服务 `deploy/hziee/atrust_qr.cjs` 与 `deploy/hziee/atrust_qr.html`，在同一网页提供“密码登录（服务端抓取官方会话验证码 + 点选坐标提交官方密码模块）”与“钉钉扫码登录（服务端官方客户端提取二维码并映射到网页）”两种模式。

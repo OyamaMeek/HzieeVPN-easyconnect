@@ -1,5 +1,12 @@
 # 进度
 
+## 统一登录页免令牌直连与自动关闭（2026-11-24）
+
+- [x] 更新 `deploy/hziee/test_atrust_qr.cjs`，覆盖免令牌直连、登录后自动关闭、后台上线自动关闭与超时自动关闭，并确认修改实现前 5 项测试按预期失败。
+- [x] 修改 `deploy/hziee/atrust_qr.cjs`、`deploy/hziee/atrust_qr.html`、`Dockerfile.atrust` 与 `deploy/hziee/README.md`，移除访问令牌生成与校验，保留 `Host`/`Origin` 校验，并实现客户端上线或 10 分钟未登录时自动关闭服务。
+- [x] 本地验证通过：`node --check`、`node --test deploy/hziee/test_dingtalk_message.mjs deploy/hziee/test_atrust_qr.cjs`（13/13）、`python3 -B -m unittest`（11/11）与 `git diff --check`；本机未安装 `docker`，`docker compose config` 交由 GitHub Actions 执行。
+- [x] 原子化提交并推送至 `origin/master`（代码提交 `6a21af3`），并补记实际提交哈希。
+
 ## 高位端口统一登录网页（2026-11-24）
 
 - [x] 补充 Node 与 Python 单元测试用例，确认实现前对应测试失败（Node 5 项失败、Python 1 项失败）。

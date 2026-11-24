@@ -633,3 +633,26 @@
 - **Git 提交**：代码提交 `7afe306`；本轮文档记录待提交。
 
 ---
+
+## [2026-11-24 13:40] 统一登录页改为免令牌直连并在验证完成或超时后自动关闭
+
+- **需求/问题描述**：
+  > 用户要求改为验证完成后自动关闭登录网页服务，无需再从服务器获取访问令牌即可直接登录，并确认采用方案 1（无令牌 + 登录后自动关闭 + 启动后 10 分钟未登录超时自动关闭）。
+
+- **实际实现的功能与改动**：
+  - 后端服务（`deploy/hziee/atrust_qr.cjs`）：移除随机访问令牌生成、`ATRUST_TOKEN_PATH` 写入及 `Bearer` 令牌校验，保留 `Host` 白名单、同源 `Origin` 校验与单次验证码 `challenge` 校验；新增自动关闭生命周期，在密码登录进入 `online`/`login`、`/status` 检测到已登录、后台每 2 秒状态检查发现客户端上线（覆盖钉钉扫码或持久化会话自动上线），或启动后 10 分钟仍未登录时自动关闭 HTTP 监听并清理连接与定时器。
+  - 前端页面（`deploy/hziee/atrust_qr.html`）：移除页内访问令牌输入框 `#tokenGate` 与 `Authorization` 请求头；在收到已登录或关闭响应后停止轮询、禁用操作按钮并提示登录网页服务已自动关闭。
+  - 构建与文档（`Dockerfile.atrust`、`deploy/hziee/README.md`）：移除 `ATRUST_TOKEN_PATH` 环境变量，更新免令牌直连与自动关闭使用说明。
+  - 测试与验证（`deploy/hziee/test_atrust_qr.cjs`）：更新免令牌与 `Host`/`Origin` 单测，新增密码登录后自动关闭、后台上线自动关闭、空闲超时自动关闭与前端脚本检查；本地 `node --check`、`node --test`（13/13）、`unittest`（11/11）与 `git diff --check` 全部通过（本机无 `docker`，未本地执行 `docker compose config`）。
+
+- **涉及文件**：
+  - `deploy/hziee/atrust_qr.cjs` (+108 / -23)
+  - `deploy/hziee/atrust_qr.html` (+61 / -122)
+  - `deploy/hziee/test_atrust_qr.cjs` (+76 / -25)
+  - `Dockerfile.atrust` (+1 / -2)
+  - `deploy/hziee/README.md` (+3 / -9)
+  - `memory/plan.md`、`memory/progress.md`、`memory/verify.md`、`docs/CHANGELOG.md`
+
+- **Git 提交**：`6a21af3 feat: remove login web token and auto-close after login or timeout`
+
+---

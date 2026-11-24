@@ -136,3 +136,8 @@ GitHub 实际结果：[Actions 44721199266](https://github.com/OyamaMeek/HzieeVP
 - 本地 `node --check` 与 `node --test deploy/hziee/test_atrust_qr.cjs deploy/hziee/test_dingtalk_message.mjs`：11/11 通过（新增 HTML `[hidden]` 规则、令牌输入框元素与内联脚本编译校验）。
 - GitHub Actions 运行 `45330968083`（提交 `7afe306e6cf475d3f00a670bf8f78140d116a218`）中 `test`、`image`、`atrust-image` 全部 `completed / success`，GHCR 摘要 `sha256:e2b58988b4be20a24c5de113d38b819815ed459e9c126ceb84889f0de1fc76b4`。
 - Shanghai-Aliyun 已更新至 `atrust-sha-7afe306e6cf475d3f00a670bf8f78140d116a218`：`HTML_GATE=7`、`NOAUTH=403`、`AUTH_OK=200`；浏览器直连 `58081` 端口已可用，待用户粘贴最新令牌后完成实际登录。
+
+补充结果（2026-11-24 13:40）：
+- 本地 TDD：更新 `deploy/hziee/test_atrust_qr.cjs` 后，修改实现前 5 项新用例按预期失败。
+- 修改后本地检查：`node --check deploy/hziee/atrust_qr.cjs deploy/hziee/atrust_qr_entry.cjs deploy/hziee/test_atrust_qr.cjs` 通过；`node --test deploy/hziee/test_dingtalk_message.mjs deploy/hziee/test_atrust_qr.cjs` 13/13 通过；`python3 -B -m unittest discover -s deploy/hziee -p 'test_captcha_web.py' -v` 11/11 通过；`git diff --check` 无告警。
+- 未在本地执行的检查：本机未安装 `docker`，未在本地运行 `docker compose config` 与容器构建；未直接更新 Shanghai-Aliyun 服务器容器。
