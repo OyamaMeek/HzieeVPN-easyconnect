@@ -5,11 +5,12 @@ const crypto = require('crypto');
 const { fileURLToPath, pathToFileURL } = require('url');
 
 const LOOPBACK_PORT = 28081;
+const DEFAULT_SOCKS_PORT = 1080;
 const CAPTCHA_MAX_BYTES = 2 * 1024 * 1024;
 const CAPTCHA_TTL_MS = 300000;
 const AUTO_CLOSE_TIMEOUT_MS = 10 * 60 * 1000;
 const STATUS_POLL_INTERVAL_MS = 2000;
-const CLOSE_DELAY_MS = 3500;
+const CLOSE_DELAY_MS = 5000;
 const LOGIN_BODY_MAX_BYTES = 16384;
 const DEFAULT_DOMAIN = 'ShenLan';
 const TRUSTED_CAPTCHA_HOSTS = ['vpn.hziee.edu.cn', '127.0.0.1', 'localhost.sangfor.com.cn'];
@@ -30,6 +31,24 @@ function parseListenPort(raw) {
 }
 
 const LISTEN_PORT = parseListenPort(process.env.ATRUST_LISTEN_PORT);
+
+function parseSocksPort(raw) {
+  const port = Number(raw);
+  return Number.isInteger(port) && port >= 1 && port <= 65535 ? port : DEFAULT_SOCKS_PORT;
+}
+
+const SOCKS_PORT = parseSocksPort(process.env.ATRUST_SOCKS_PORT || process.env.SOCKS_PORT);
+
+function buildSocks5Info(port = SOCKS_PORT) {
+  const validPort = parseSocksPort(port);
+  return {
+    host: '127.0.0.1',
+    port: validPort,
+    address: '127.0.0.1:' + validPort,
+    auth: false,
+    localOnly: true,
+  };
+}
 
 function trustedFrame(raw) {
   try {
@@ -480,6 +499,7 @@ function readJsonBody(request, maxBytes = LOGIN_BODY_MAX_BYTES) {
 function createServer(options) {
   const {
     publicPorts = DEFAULT_PUBLIC_PORTS,
+    socksPort = SOCKS_PORT,
     htmlPath = path.join(__dirname, 'atrust_qr.html'),
     autoCloseTimeoutMs = AUTO_CLOSE_TIMEOUT_MS,
     statusPollIntervalMs = STATUS_POLL_INTERVAL_MS,
@@ -489,6 +509,7 @@ function createServer(options) {
     fetchCaptcha,
     submitPassword,
   } = options;
+  const socks5Info = buildSocks5Info(socksPort);
   let busy = false;
   let activeCaptcha = null;
   let closing = false;
@@ -582,6 +603,7 @@ function createServer(options) {
       if (isStatus) {
         const mode = parsedUrl.searchParams.get('mode') === 'password' ? 'password' : 'dingtalk';
         const captchaValid = Boolean(activeCaptcha && (Date.now() - activeCaptcha.createdAt) <= CAPTCHA_TTL_MS);
+        const loggedIn = isLoggedIn(status);
         if (mode === 'password') {
           const body = {
             status,
@@ -593,39 +615,64 @@ function createServer(options) {
             captchaChallenge: captchaValid ? activeCaptcha.challenge : null,
             captchaWidth: captchaValid ? activeCaptcha.width : null,
             captchaHeight: captchaValid ? activeCaptcha.height : null,
-            closing: isLoggedIn(status),
+            closing: loggedIn,
+            socks5: loggedIn ? socks5Info : null,
           };
-          if (isLoggedIn(status)) return sendAndClose(200, body, 'logged-in');
+          if (loggedIn) return sendAndClose(200, body, 'logged-in');
           return send(200, body);
         }
-        const result = { status, mode, image: null, frames: [], sources: [], captchaActive: captchaValid, closing: isLoggedIn(status) };
+        const result = {
+          status,
+          mode,
+          image: null,
+          frames: [],
+          sources: [],
+          captchaActive: captchaValid,
+          closing: loggedIn,
+          socks5: loggedIn ? socks5Info : null,
+        };
         if (status === 'logout') {
           const current = await readDingTalk({ refresh: false });
           result.image = current.image || null;
           result.frames = current.frames || [];
           result.sources = current.sources || [];
         }
-        if (isLoggedIn(status)) return sendAndClose(200, result, 'logged-in');
+        if (loggedIn) return sendAndClose(200, result, 'logged-in');
         return send(200, result);
       }
 
       if (isRefresh) {
         activeCaptcha = null;
-        const result = { status, mode: 'dingtalk', image: null, frames: [], sources: [], captchaActive: false, closing: isLoggedIn(status) };
+        const loggedIn = isLoggedIn(status);
+        const result = {
+          status,
+          mode: 'dingtalk',
+          image: null,
+          frames: [],
+          sources: [],
+          captchaActive: false,
+          closing: loggedIn,
+          socks5: loggedIn ? socks5Info : null,
+        };
         if (status === 'logout') {
           const current = await readDingTalk({ refresh: true });
           result.image = current.image || null;
           result.frames = current.frames || [];
           result.sources = current.sources || [];
         }
-        if (isLoggedIn(status)) return sendAndClose(200, result, 'logged-in');
+        if (loggedIn) return sendAndClose(200, result, 'logged-in');
         return send(200, result);
       }
 
       if (isCaptcha) {
         if (status !== 'logout') {
           if (isLoggedIn(status)) {
-            return sendAndClose(409, { error: '客户端当前状态为 ' + status + '，无需再次登录', status, closing: true }, 'logged-in');
+            return sendAndClose(409, {
+              error: '客户端当前状态为 ' + status + '，无需再次登录',
+              status,
+              closing: true,
+              socks5: socks5Info,
+            }, 'logged-in');
           }
           return send(409, { error: '客户端当前状态为 ' + status + '，无需再次登录', status });
         }
@@ -692,6 +739,7 @@ function createServer(options) {
             code: 0,
             status: nextStatus,
             closing: willClose,
+            socks5: willClose ? socks5Info : null,
             message: safeMessage || '密码与验证码校验成功',
             nextService: authResult.nextService || null,
           };
@@ -856,7 +904,7 @@ function start(electron, appConfig, mainWindow) {
     },
   });
   server.listen(LISTEN_PORT, '127.0.0.1', () => {
-    console.log('[aTrust Web] Ready on container loopback port ' + LISTEN_PORT + ' (public ports: ' + publicPorts.join(',') + ', auto-closes after login or ' + Math.round(AUTO_CLOSE_TIMEOUT_MS / 1000) + 's)');
+    console.log('[aTrust Web] Ready on container loopback port ' + LISTEN_PORT + ' (public ports: ' + publicPorts.join(',') + ', socks5: 127.0.0.1:' + SOCKS_PORT + ' no-auth local-only, auto-closes after login or ' + Math.round(AUTO_CLOSE_TIMEOUT_MS / 1000) + 's)');
   });
   electron.app.on('before-quit', () => server.close());
 }
@@ -868,6 +916,8 @@ module.exports = {
   resolveAssetsBaseUrl,
   allowedHost,
   authorized,
+  parseSocksPort,
+  buildSocks5Info,
   qrData,
   sanitizeMessage,
   validatePasswordLogin,

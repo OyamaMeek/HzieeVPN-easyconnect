@@ -128,11 +128,19 @@ jobs:
             test -x /usr/local/bin/start.sh
             test -x /usr/local/bin/start-sangfor.sh
             test -x /usr/local/bin/vpn-config.sh
+            test "$ATRUST_SOCKS_PORT" = "1080"
             test "$PING_ADDR" = "10.130.10.75"
             test "$PING_ADDR_URL" = "http://10.130.10.75/"
             test "$PING_INTERVAL" = "60"
             eval "$(vpn-config.sh)"
             test "$FORCE_OPEN_PORTS" = "54631 58081"
+            bash -c 'source /usr/local/bin/start.sh; VPN_TUN=lo render_danted_conf /tmp/danted-check.conf'
+            grep -q '^clientmethod: none$' /tmp/danted-check.conf
+            grep -q '^socksmethod: none$' /tmp/danted-check.conf
+            grep -q 'from: 127.0.0.0/8 to: 0.0.0.0/0' /tmp/danted-check.conf
+            grep -q 'client block {' /tmp/danted-check.conf
+            /usr/sbin/danted -V -f /tmp/danted-check.conf
+            rm -f /tmp/danted-check.conf
             command -v Xvfb danted tinyproxy socat iptables ip busybox >/dev/null
             test -f /usr/local/lib/fake-getlogin.so
             test -x /usr/share/sangfor/aTrust/aTrustTray

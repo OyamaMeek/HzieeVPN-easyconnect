@@ -8,13 +8,14 @@ services:
     cap_add:
       - NET_ADMIN
     ports:
-      - "127.0.0.1:1080:1080"
+      - "127.0.0.1:${ATRUST_SOCKS_PORT:-1080}:1080"
       - "127.0.0.1:8888:8888"
       - "0.0.0.0:${ATRUST_WEB_PORT:-58081}:${ATRUST_WEB_PORT:-58081}"
     environment:
       - ATRUST_WEB_PORT=${ATRUST_WEB_PORT:-58081}
       - ATRUST_LISTEN_PORT=${ATRUST_WEB_PORT:-58081}
       - ATRUST_PUBLIC_PORTS=${ATRUST_WEB_PORT:-58081}
+      - ATRUST_SOCKS_PORT=${ATRUST_SOCKS_PORT:-1080}
     volumes:
       - /opt/hziee-vpn/data:/root
     logging:

@@ -11,6 +11,7 @@ const KEEPALIVE_SCRIPT = path.join(SCRIPTS_DIR, 'keepalive-ping.sh');
 const VPN_CONFIG_SCRIPT = path.join(SCRIPTS_DIR, 'vpn-config.sh');
 const START_SCRIPT = path.join(SCRIPTS_DIR, 'start.sh');
 const START_SANGFOR_SCRIPT = path.join(SCRIPTS_DIR, 'start-sangfor.sh');
+const COMPOSE_ATRUST = path.join(__dirname, 'compose.atrust.yaml');
 const DOCKERFILE_ATRUST = path.join(REPO_ROOT, 'Dockerfile.atrust');
 
 function makeStubBinDir(t) {
@@ -176,6 +177,11 @@ test('start.sh and start-sangfor.sh keep only login web, proxies, headless Xvfb,
     'CLIP_TEXT',
     'VNC_SIZE',
     'sync_ec2volume',
+    'SOCKS_USER',
+    'SOCKS_PASSWD',
+    'chpasswd',
+    'useradd',
+    'socksmethod: username',
   ]) {
     assert.equal(startRaw.includes(forbidden), false, `start.sh should not contain ${forbidden}`);
   }
@@ -184,10 +190,100 @@ test('start.sh and start-sangfor.sh keep only login web, proxies, headless Xvfb,
   }
 });
 
+test('render_danted_conf enforces no-auth and local-only client rules', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'atrust-danted-test-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const fakeIp = path.join(dir, 'fake-ip');
+  fs.writeFileSync(
+    fakeIp,
+    [
+      '#!/bin/sh',
+      'if [ "$1" = "-6" ] && [ "$2" = "a" ]; then',
+      '  printf "%s" "${STUB_IPV6:-}"',
+      '  exit 0',
+      'fi',
+      'if [ "$1" = "-4" ] && [ "$2" = "route" ]; then',
+      '  printf "%s\\n" "${STUB_DEFAULT_ROUTE-default via 172.18.0.1 dev eth0}"',
+      '  exit 0',
+      'fi',
+      'if [ "$1" = "-o" ] && [ "$2" = "addr" ]; then',
+      '  printf "1: lo    inet 127.0.0.1/8 scope host lo\\n2: eth0  inet 172.18.0.2/16 brd 172.18.255.255 scope global eth0\\n3: sit0@NONE inet6 ::/0\\n"',
+      '  exit 0',
+      'fi',
+      'exit 0',
+    ].join('\n') + '\n',
+    { mode: 0o755 },
+  );
+
+  const ipv4Conf = path.join(dir, 'danted-ipv4.conf');
+  const res1 = spawnSync(
+    'bash',
+    ['-c', `source "${START_SCRIPT}"; render_danted_conf "${ipv4Conf}"`],
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        IP_CMD: fakeIp,
+        VPN_TUN: 'utun7',
+        SOCKS_USER: 'ignored-user',
+        SOCKS_PASSWD: 'ignored-pass',
+        STUB_IPV6: '',
+        STUB_DEFAULT_ROUTE: 'default via 172.18.0.1 dev eth0',
+      },
+    },
+  );
+  assert.equal(res1.status, 0, res1.stderr);
+  const conf1 = fs.readFileSync(ipv4Conf, 'utf8');
+  assert.match(conf1, /^internal: 0\.0\.0\.0 port = 1080$/m);
+  assert.doesNotMatch(conf1, /^internal: :: port = 1080$/m);
+  assert.match(conf1, /^external: eth0$/m);
+  assert.match(conf1, /^external: lo$/m);
+  assert.match(conf1, /^external: utun7$/m);
+  assert.doesNotMatch(conf1, /^external: sit0$/m);
+  assert.match(conf1, /^clientmethod: none$/m);
+  assert.match(conf1, /^socksmethod: none$/m);
+  assert.doesNotMatch(conf1, /socksmethod:\s*username/);
+  assert.doesNotMatch(conf1, /ignored-user|ignored-pass/);
+  assert.match(conf1, /client pass \{\s*from: 127\.0\.0\.0\/8 to: 0\.0\.0\.0\/0/);
+  assert.match(conf1, /client pass \{\s*from: 172\.18\.0\.1\/32 to: 0\.0\.0\.0\/0/);
+  assert.doesNotMatch(conf1, /client pass \{\s*from: 0\/0/);
+  assert.match(conf1, /client block \{\s*from: 0\/0 to: 0\/0/);
+
+  const ipv6Conf = path.join(dir, 'danted-ipv6.conf');
+  const res2 = spawnSync(
+    'bash',
+    ['-c', `source "${START_SCRIPT}"; render_danted_conf "${ipv6Conf}"`],
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        IP_CMD: fakeIp,
+        VPN_TUN: 'utun7',
+        STUB_IPV6: '1: lo: <LOOPBACK,UP>\n    inet6 ::1/128 scope host\n',
+        STUB_DEFAULT_ROUTE: '',
+      },
+    },
+  );
+  assert.equal(res2.status, 0, res2.stderr);
+  const conf2 = fs.readFileSync(ipv6Conf, 'utf8');
+  assert.match(conf2, /^internal: :: port = 1080$/m);
+  assert.match(conf2, /client pass \{\s*from: ::1\/128 to: ::\/0/);
+  assert.doesNotMatch(conf2, /172\.18\.0\.1/);
+  assert.match(conf2, /client block \{\s*from: 0\/0 to: 0\/0/);
+});
+
+test('compose.atrust.yaml binds SOCKS5 to loopback only and exposes ATRUST_SOCKS_PORT', () => {
+  const compose = fs.readFileSync(COMPOSE_ATRUST, 'utf8');
+  assert.match(compose, /127\.0\.0\.1:\$\{ATRUST_SOCKS_PORT:-1080\}:1080/);
+  assert.match(compose, /ATRUST_SOCKS_PORT=\$\{ATRUST_SOCKS_PORT:-1080\}/);
+  assert.doesNotMatch(compose, /SOCKS_USER|SOCKS_PASSWD/);
+});
+
 test('Dockerfile.atrust configures minute keepalive to 10.130.10.75 and removes unrelated components', () => {
   const dockerfile = fs.readFileSync(DOCKERFILE_ATRUST, 'utf8');
 
   for (const required of [
+    'ATRUST_SOCKS_PORT=1080',
     'PING_ADDR=10.130.10.75',
     'PING_ADDR_URL=http://10.130.10.75/',
     'PING_INTERVAL=60',

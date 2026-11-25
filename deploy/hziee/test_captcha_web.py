@@ -149,12 +149,33 @@ class CaptchaWebTest(unittest.TestCase):
 
     def test_connected_and_exited_process_cannot_accept_captcha(self):
         payload = self.challenge()
+        before = json.loads(self.request("GET", "/api/state")[1])
+        self.assertIsNone(before["socks5"])
         self.session.observe("VPN client started\n")
         self.assertEqual(self.session.status, "connected")
+        connected = json.loads(self.request("GET", "/api/state")[1])
+        self.assertEqual(connected["socks5"], {
+            "host": "127.0.0.1",
+            "port": 1080,
+            "address": "127.0.0.1:1080",
+            "auth": False,
+            "localOnly": True,
+        })
+        self.assertIn("127.0.0.1:1080", connected["message"])
         self.assertEqual(self.request("POST", "/api/submit", payload)[0], 409)
         self.session.finish(1)
         self.assertEqual(self.session.status, "exited")
+        exited = json.loads(self.request("GET", "/api/state")[1])
+        self.assertIsNone(exited["socks5"])
         self.assertEqual(self.request("POST", "/api/submit", payload)[0], 409)
+
+    def test_captcha_html_contains_socks5_display_panel(self):
+        html = Path(__file__).with_name("captcha.html").read_text(encoding="utf-8")
+        self.assertIn('id="socksInfo"', html)
+        self.assertIn('id="socksAddress"', html)
+        self.assertIn('id="socksPort"', html)
+        self.assertIn("无账号密码", html)
+        self.assertIn("仅允许本地连接", html)
 
     def test_dead_process_is_rejected_before_writing(self):
         payload = self.challenge()

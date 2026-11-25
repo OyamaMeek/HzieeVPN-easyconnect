@@ -10,6 +10,8 @@ const {
   resolveAssetsBaseUrl,
   allowedHost,
   authorized,
+  parseSocksPort,
+  buildSocks5Info,
   qrData,
   sanitizeMessage,
   validatePasswordLogin,
@@ -237,7 +239,9 @@ test('unified high-port web server supports password captcha flow, DingTalk QR, 
 
     const directStatus = await httpRequest(port, 'GET', '/status?mode=password', { Host: '203.0.113.10:58081' });
     assert.equal(directStatus.status, 200);
-    assert.equal(JSON.parse(directStatus.body).status, 'logout');
+    const directBody = JSON.parse(directStatus.body);
+    assert.equal(directBody.status, 'logout');
+    assert.equal(directBody.socks5, null);
 
     const qrRes = await httpRequest(port, 'POST', '/refresh', apiHeaders);
     assert.equal(qrRes.status, 200);
@@ -287,6 +291,13 @@ test('unified high-port web server supports password captcha flow, DingTalk QR, 
     assert.equal(okBody.ok, true);
     assert.equal(okBody.status, 'online');
     assert.equal(okBody.closing, true);
+    assert.deepEqual(okBody.socks5, {
+      host: '127.0.0.1',
+      port: 1080,
+      address: '127.0.0.1:1080',
+      auth: false,
+      localOnly: true,
+    });
     assert.equal(loginCalls, 2);
 
     await closed;
@@ -342,16 +353,78 @@ test('auto-closes login server after idle timeout without login', async () => {
   }
 });
 
-test('atrust_qr.html hides hidden containers, omits token gate, and handles auto-close', () => {
+test('atrust_qr.html hides hidden containers, omits token gate, displays SOCKS5 port after login, and handles auto-close', () => {
   const html = fs.readFileSync(path.join(__dirname, 'atrust_qr.html'), 'utf8');
   assert.match(html, /\[hidden\]\{display:none !important\}/);
   assert.doesNotMatch(html, /id="tokenGate"/);
   assert.doesNotMatch(html, /id="tokenInput"/);
   assert.doesNotMatch(html, /Authorization/);
+  assert.match(html, /id="socksInfo"[^>]*hidden/);
+  assert.match(html, /id="socksAddress"/);
+  assert.match(html, /id="socksPort"/);
+  assert.match(html, /无账号密码/);
+  assert.match(html, /仅允许本地连接/);
   assert.match(html, /自动关闭/);
   const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
   assert.ok(scriptMatch, 'expected inline script block');
   assert.doesNotThrow(() => new Function(scriptMatch[1]));
+});
+
+test('parseSocksPort and buildSocks5Info enforce local-only no-auth metadata', () => {
+  assert.equal(parseSocksPort(undefined), 1080);
+  assert.equal(parseSocksPort('1080'), 1080);
+  assert.equal(parseSocksPort('11080'), 11080);
+  for (const invalid of ['', '0', '-1', '70000', 'abc', '1080.5']) {
+    assert.equal(parseSocksPort(invalid), 1080);
+  }
+  assert.deepEqual(buildSocks5Info(11080), {
+    host: '127.0.0.1',
+    port: 11080,
+    address: '127.0.0.1:11080',
+    auth: false,
+    localOnly: true,
+  });
+});
+
+test('GET /status returns configured local-only no-auth SOCKS5 port only after login', async () => {
+  let statusValue = 'logout';
+  const server = createServer({
+    publicPorts: [58081],
+    socksPort: 11080,
+    autoCloseTimeoutMs: 60000,
+    statusPollIntervalMs: 0,
+    closeDelayMs: 50,
+    getLoginStatus: () => statusValue,
+    readDingTalk: async () => ({ image: ONE_PIXEL_PNG, frames: [], sources: [] }),
+    fetchCaptcha: async () => { throw new Error('unused'); },
+    submitPassword: async () => { throw new Error('unused'); },
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const headers = { Host: '203.0.113.10:58081', Origin: 'http://203.0.113.10:58081' };
+  const closed = new Promise(resolve => server.once('close', resolve));
+  try {
+    const before = await httpRequest(port, 'GET', '/status?mode=dingtalk', headers);
+    assert.equal(before.status, 200);
+    assert.equal(JSON.parse(before.body).socks5, null);
+
+    statusValue = 'online';
+    const after = await httpRequest(port, 'GET', '/status?mode=dingtalk', headers);
+    assert.equal(after.status, 200);
+    const body = JSON.parse(after.body);
+    assert.equal(body.status, 'online');
+    assert.equal(body.closing, true);
+    assert.deepEqual(body.socks5, {
+      host: '127.0.0.1',
+      port: 11080,
+      address: '127.0.0.1:11080',
+      auth: false,
+      localOnly: true,
+    });
+    await closed;
+  } finally {
+    if (server.listening) await new Promise(resolve => server.close(resolve));
+  }
 });
 
 test('fetchCaptchaWithReload reuses valid form without reloading window', async () => {

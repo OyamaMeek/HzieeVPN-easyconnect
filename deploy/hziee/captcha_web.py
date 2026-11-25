@@ -19,9 +19,10 @@ class RequestError(Exception):
 
 
 class LoginSession:
-    def __init__(self, process, image_path):
+    def __init__(self, process, image_path, socks_port=1080):
         self.process = process
         self.image_path = image_path
+        self.socks_port = socks_port
         self.token = secrets.token_urlsafe(32)
         self.lock = threading.Lock()
         self.status = "starting"
@@ -29,6 +30,17 @@ class LoginSession:
         self.challenge = ""
         self.image = b""
         self.image_saved = False
+
+    def socks5_info(self):
+        if self.status != "connected":
+            return None
+        return {
+            "host": "127.0.0.1",
+            "port": self.socks_port,
+            "address": "127.0.0.1:%s" % self.socks_port,
+            "auth": False,
+            "localOnly": True,
+        }
 
     def observe(self, line):
         with self.lock:
@@ -52,7 +64,7 @@ class LoginSession:
                 self.image_saved = False
             if "VPN client started" in line:
                 self.status = "connected"
-                self.message = "VPN 已连接，可以关闭此网页。请保持登录终端运行。"
+                self.message = "VPN 已连接，SOCKS5 开放端口：127.0.0.1:%s（无账号密码，仅允许本地连接），可以关闭此网页。请保持登录终端运行。" % self.socks_port
                 self.image = b""
 
     def finish(self, returncode):
@@ -170,7 +182,12 @@ class CaptchaHandler(BaseHTTPRequestHandler):
             elif url.path == "/api/state":
                 session = self.server.session
                 with session.lock:
-                    self.reply(200, {"status": session.status, "message": session.message, "challenge": session.challenge})
+                    self.reply(200, {
+                        "status": session.status,
+                        "message": session.message,
+                        "challenge": session.challenge,
+                        "socks5": session.socks5_info(),
+                    })
             elif url.path == "/api/image":
                 session = self.server.session
                 with session.lock:
@@ -208,11 +225,14 @@ def main():
     parser = argparse.ArgumentParser(description="通过网页点选 aTrust 验证码并自动提交。")
     parser.add_argument("--host", default="127.0.0.1", help="网页监听地址，默认 127.0.0.1；对外通过高位端口开放时可设为 0.0.0.0")
     parser.add_argument("--port", type=int, default=18081, help="网页端口，默认 18081（对外开放时建议使用高位端口如 58081）")
+    parser.add_argument("--socks-port", type=int, default=1080, help="连接成功后在网页显示的本机 SOCKS5 开放端口，默认 1080")
     parser.add_argument("--image", type=Path, default=directory / "headless-data/captcha.png", help="客户端写入的验证码文件")
     parser.add_argument("command", nargs=argparse.REMAINDER, help="可选：-- 后接原生客户端命令；默认运行学校 Compose")
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error("端口必须在 1 至 65535 之间。")
+    if not 1 <= args.socks_port <= 65535:
+        parser.error("SOCKS5 端口必须在 1 至 65535 之间。")
     command = args.command
     if command[:1] == ["--"]:
         command = command[1:]
@@ -220,7 +240,7 @@ def main():
         command = ["docker", "compose", "-f", str(directory / "compose.headless.yaml"),
                    "run", "--rm", "--service-ports", "-T", "vpn"]
     os.umask(0o077)
-    session = LoginSession(None, args.image.resolve())
+    session = LoginSession(None, args.image.resolve(), socks_port=args.socks_port)
     try:
         server = CaptchaServer((args.host, args.port), session)
     except OSError as error:

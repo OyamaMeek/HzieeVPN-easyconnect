@@ -21,6 +21,13 @@
     button:disabled { opacity: .45; cursor: default; }
     #submit { width: 100%; margin-top: 16px; border-color: #245b86; background: #245b86; color: white; }
     #count { margin-bottom: 12px; font-size: 14px; }
+    .proxy-card { margin: 16px 0; padding: 14px 16px; border-radius: 8px; background: #f0fdf4; border: 1px solid #86efac; color: #14532d; }
+    .proxy-title { font-size: 15px; font-weight: 700; margin: 0 0 10px; color: #166534; }
+    .proxy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .proxy-item { background: #fff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 10px; }
+    .proxy-label { display: block; font-size: 12px; color: #4e6578; margin-bottom: 2px; }
+    .proxy-value { font: 600 15px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #0f172a; user-select: all; }
+    .proxy-meta { font-size: 13px; font-weight: 600; color: #166534; }
     footer { margin-top: 24px; color: #62788b; font-size: 13px; line-height: 1.7; }
     [hidden] { display: none !important; }
     @media (max-width: 420px) { body { padding: 16px; } main { padding: 24px 20px; } }
@@ -30,6 +37,27 @@
   <main>
     <h1>完成登录验证</h1>
     <p id="message" role="status" aria-live="polite">正在连接验证码服务…</p>
+    <section id="socksInfo" class="proxy-card" hidden aria-live="polite">
+      <div class="proxy-title">连接成功 · SOCKS5 开放端口</div>
+      <div class="proxy-grid">
+        <div class="proxy-item">
+          <span class="proxy-label">SOCKS5 地址</span>
+          <code id="socksAddress" class="proxy-value">127.0.0.1:1080</code>
+        </div>
+        <div class="proxy-item">
+          <span class="proxy-label">开放端口</span>
+          <code id="socksPort" class="proxy-value">1080</code>
+        </div>
+        <div class="proxy-item">
+          <span class="proxy-label">账号密码</span>
+          <span id="socksAuth" class="proxy-meta">无账号密码</span>
+        </div>
+        <div class="proxy-item">
+          <span class="proxy-label">访问限制</span>
+          <span id="socksScope" class="proxy-meta">仅允许本地连接（127.0.0.1）</span>
+        </div>
+      </div>
+    </section>
     <section id="challenge" hidden aria-label="点选验证码">
       <div id="picker">
         <img id="image" alt="请按图中提示依次点选文字；可用方向键移动选择位置，按回车确认" draggable="false" tabindex="0">
@@ -50,6 +78,11 @@
     const picker = document.querySelector('#picker');
     const panel = document.querySelector('#challenge');
     const message = document.querySelector('#message');
+    const socksInfo = document.querySelector('#socksInfo');
+    const socksAddress = document.querySelector('#socksAddress');
+    const socksPort = document.querySelector('#socksPort');
+    const socksAuth = document.querySelector('#socksAuth');
+    const socksScope = document.querySelector('#socksScope');
     const count = document.querySelector('#count');
     const undo = document.querySelector('#undo');
     const clear = document.querySelector('#clear');
@@ -140,6 +173,16 @@
       try {
         const state = await (await request('/api/state')).json();
         if (!busy) message.textContent = state.message;
+        if (state.status === 'connected' && state.socks5 && Number.isInteger(state.socks5.port)) {
+          const host = typeof state.socks5.host === 'string' && state.socks5.host ? state.socks5.host : '127.0.0.1';
+          socksAddress.textContent = `${host}:${state.socks5.port}`;
+          socksPort.textContent = String(state.socks5.port);
+          socksAuth.textContent = '无账号密码';
+          socksScope.textContent = `仅允许本地连接（${host}）`;
+          socksInfo.hidden = false;
+        } else {
+          socksInfo.hidden = true;
+        }
         if (state.status === 'captcha') {
           if (state.challenge !== challenge || !ready) {
             ready = false;

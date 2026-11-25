@@ -9,7 +9,7 @@
 - **密码登录**：服务端直接通过官方 Electron 会话抓取图形验证码图片并映射到网页，用户在网页输入账号密码、按顺序点选验证码后，由服务器官方客户端内原有 `master` 密码模块完成加密与认证提交；每个验证码 `challenge` 仅允许提交一次，错误返回会脱敏账号与密码。
 - **钉钉扫码**：服务端直接从官方 Electron 客户端钉钉登录框架提取二维码 PNG 并映射到网页，扫码回调、登录和 VPN 隧道均由服务器官方客户端处理，不在用户浏览器加载钉钉登录页。
 
-统一登录镜像直接监听高位端口 `58081`（可通过 `ATRUST_WEB_PORT`、`ATRUST_LISTEN_PORT`、`ATRUST_PUBLIC_PORTS` 调整）。接口保留 `Host` 白名单与同源 `Origin` 校验，免访问令牌直连访问 `http://<服务器IP>:58081/`；客户端完成认证进入 `online`/`login` 状态，或启动后 10 分钟未完成登录时，登录网页服务自动关闭监听以收敛暴露窗口。会话过期需要重新登录时，重启容器即可再次拉起登录页。
+统一登录镜像直接监听高位端口 `58081`（可通过 `ATRUST_WEB_PORT`、`ATRUST_LISTEN_PORT`、`ATRUST_PUBLIC_PORTS` 调整）。接口保留 `Host` 白名单与同源 `Origin` 校验，免访问令牌直连访问 `http://<服务器IP>:58081/`；客户端完成认证进入 `online`/`login` 状态后，网页会显示本机 SOCKS5 开放端口（默认 `127.0.0.1:1080`，可通过 `ATRUST_SOCKS_PORT` 调整；容器内 `danted` 固定不设置账号密码且仅允许本地连接），随后登录网页服务自动关闭监听以收敛暴露窗口。启动后 10 分钟未完成登录时也会自动关闭。会话过期需要重新登录时，重启容器即可再次拉起登录页。
 
 镜像内默认启用每 60 秒保活（`PING_INTERVAL=60`、`PING_ADDR=10.130.10.75`、`PING_ADDR_URL=http://10.130.10.75/`），通过 `/usr/local/bin/keepalive-ping.sh` 定时向 `10.130.10.75` 发送 ICMP ping 与 HTTP 探测。镜像已移除与账号密码登录、钉钉扫码登录、映射网页及 SOCKS5/HTTP 代理无关的组件（TigerVNC、noVNC、`flwm`、`stalonetray`、`xclip`、`x11-utils`、EasyConnect 脚本、`CHROMIUM` 与 `FORWARD` 转发分支），改由无监听端口的无头 `Xvfb` 为官方 Electron 客户端提供显示环境，仅暴露 `1080`（SOCKS5）、`8888`（HTTP）与 `58081`（登录网页）。
 

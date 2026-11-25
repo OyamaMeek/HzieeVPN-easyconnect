@@ -1,7 +1,4 @@
 #!/bin/bash
-eval "$(detect-iptables.sh)"
-eval "$(detect-route.sh)"
-eval "$(vpn-config.sh)"
 
 xvfb_pid=""
 keepalive_pid=""
@@ -15,36 +12,65 @@ cleanup() {
 	done
 	exit 0
 }
-trap cleanup INT TERM
+
+detect_bridge_gateway() {
+	local ip_cmd="${IP_CMD:-ip}"
+	local gw=""
+	gw=$("$ip_cmd" -4 route show default 2>/dev/null | awk '/^default/ {for (i=1; i<=NF; i++) if ($i=="via") {print $(i+1); exit}}')
+	if [[ "$gw" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+		printf '%s\n' "$gw"
+	fi
+}
+
+render_danted_conf() {
+	local conf_path="${1:-/run/danted.conf}"
+	local ip_cmd="${IP_CMD:-ip}"
+	local vpn_tun="${VPN_TUN:-utun7}"
+	local ipv6=""
+	local bridge_gw=""
+	local iface=""
+
+	ipv6=$("$ip_cmd" -6 a 2>/dev/null || true)
+	bridge_gw=$(detect_bridge_gateway)
+
+	{
+		printf 'errorlog: /dev/stderr\n\n'
+		printf 'internal: 0.0.0.0 port = 1080\n'
+		if [[ -n "$ipv6" ]]; then
+			printf 'internal: :: port = 1080\n'
+		fi
+		for iface in $("$ip_cmd" -o addr 2>/dev/null | sed -E 's/^[0-9]+: ([^:@ ]+).*/\1/' | sort -u | grep -Ev 'sit|vir' || true); do
+			if [[ -n "$iface" && "$iface" != "$vpn_tun" ]]; then
+				printf 'external: %s\n' "$iface"
+			fi
+		done
+		printf 'external: %s\n' "$vpn_tun"
+		printf 'external.rotation: route\n\n'
+		printf 'user.privileged: root\n'
+		printf 'user.notprivileged: socks\n\n'
+		printf 'clientmethod: none\n'
+		printf 'socksmethod: none\n\n'
+		printf 'client pass {\n\tfrom: 127.0.0.0/8 to: 0.0.0.0/0\n\tlog: error\n}\n'
+		if [[ -n "$bridge_gw" ]]; then
+			printf 'client pass {\n\tfrom: %s/32 to: 0.0.0.0/0\n\tlog: error\n}\n' "$bridge_gw"
+		fi
+		if [[ -n "$ipv6" ]]; then
+			printf 'client pass {\n\tfrom: ::1/128 to: ::/0\n\tlog: error\n}\n'
+		fi
+		printf 'client block {\n\tfrom: 0/0 to: 0/0\n\tlog: error\n}\n\n'
+		printf 'socks pass {\n\tfrom: 127.0.0.0/8 to: 0/0\n\tcommand: bind connect udpassociate\n\tlog: error\n}\n'
+		if [[ -n "$bridge_gw" ]]; then
+			printf 'socks pass {\n\tfrom: %s/32 to: 0/0\n\tcommand: bind connect udpassociate\n\tlog: error\n}\n' "$bridge_gw"
+		fi
+		if [[ -n "$ipv6" ]]; then
+			printf 'socks pass {\n\tfrom: ::1/128 to: 0/0\n\tcommand: bind connect udpassociate\n\tlog: error\n}\n'
+		fi
+		printf 'socks pass {\n\tfrom: 0/0 to: 0/0\n\tcommand: bindreply udpreply\n\tlog: error\n}\n'
+	} > "$conf_path"
+}
 
 start_danted() {
-	cp /etc/danted.conf.sample /run/danted.conf
-
-	if [[ -n "$SOCKS_PASSWD" && -n "$SOCKS_USER" ]]; then
-		if ! id "$SOCKS_USER" >/dev/null 2>&1; then
-			useradd "$SOCKS_USER"
-		fi
-		echo "$SOCKS_USER:$SOCKS_PASSWD" | chpasswd
-		sed -i 's/socksmethod: none/socksmethod: username/g' /run/danted.conf
-		echo "use socks5 auth: $SOCKS_USER"
-	fi
-
-	local internals=""
-	local externals=""
-	local ipv6
-	ipv6=$(ip -6 a)
-	if [[ -n "$ipv6" ]]; then
-		internals="internal: 0.0.0.0 port = 1080\\ninternal: :: port = 1080"
-	else
-		internals="internal: 0.0.0.0 port = 1080"
-	fi
-	local iface
-	for iface in $(ip -o addr | sed -E 's/^[0-9]+: ([^ ]+) .*/\1/' | sort | uniq | grep -v "sit\|vir"); do
-		externals="${externals}external: $iface\\n"
-	done
-	externals="${externals}external: $VPN_TUN\\n"
-	sed "/^internal:/c$internals" -i /run/danted.conf
-	sed "/^external:/c$externals" -i /run/danted.conf
+	render_danted_conf /run/danted.conf
 	open_port 1080
 	if ip tuntap add mode tun "$VPN_TUN"; then
 		ip addr add 10.0.0.1/32 dev "$VPN_TUN"
@@ -107,26 +133,37 @@ start_xvfb() {
 	exit 1
 }
 
-for f in /tmp/* /tmp/.*; do
-	[ "/tmp/." = "$f" ] || [ "/tmp/.." = "$f" ] || [ "/tmp/.X11-unix" = "$f" ] && continue
-	rm -rf -- "$f"
-done
+main() {
+	eval "$(detect-iptables.sh)"
+	eval "$(detect-route.sh)"
+	eval "$(vpn-config.sh)"
+	trap cleanup INT TERM
 
-ulimit -n 1048576
-config_vpn_iptables
-force_open_ports
-start_tinyproxy
-start_danted
+	for f in /tmp/* /tmp/.*; do
+		[ "/tmp/." = "$f" ] || [ "/tmp/.." = "$f" ] || [ "/tmp/.X11-unix" = "$f" ] && continue
+		rm -rf -- "$f"
+	done
 
-if [ -z "$DISPLAY" ]; then
-	export DISPLAY=:1
-	start_xvfb
+	ulimit -n 1048576
+	config_vpn_iptables
+	force_open_ports
+	start_tinyproxy
+	start_danted
+
+	if [ -z "$DISPLAY" ]; then
+		export DISPLAY=:1
+		start_xvfb
+	fi
+
+	/usr/local/bin/keepalive-ping.sh &
+	keepalive_pid=$!
+
+	[ -n "$EXIT" ] && export MAX_RETRY=0
+	start-sangfor.sh &
+	sangfor_pid=$!
+	wait "$sangfor_pid"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+	main "$@"
 fi
-
-/usr/local/bin/keepalive-ping.sh &
-keepalive_pid=$!
-
-[ -n "$EXIT" ] && export MAX_RETRY=0
-start-sangfor.sh &
-sangfor_pid=$!
-wait "$sangfor_pid"

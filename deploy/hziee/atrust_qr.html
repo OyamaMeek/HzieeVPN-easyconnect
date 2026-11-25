@@ -31,6 +31,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .status{margin:12px 0;padding:10px 12px;border-radius:8px;background:#f8fafc;color:#334155;font-size:14px;min-height:42px}
 .status.ok{background:#dcfce7;color:#166534}
 .status.err{background:#fee2e2;color:#991b1b}
+.proxy-card{margin:0 0 18px;padding:14px 16px;border-radius:12px;background:#f0fdf4;border:1px solid #86efac;color:#14532d}
+.proxy-title{font-size:15px;font-weight:700;margin-bottom:10px;color:#166534}
+.proxy-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.proxy-item{background:#fff;border:1px solid #bbf7d0;border-radius:8px;padding:8px 10px}
+.proxy-label{display:block;font-size:12px;color:#475569;margin-bottom:2px}
+.proxy-value{display:inline-block;font:600 15px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#0f172a;user-select:all}
+.proxy-meta{font-size:13px;font-weight:600;color:#166534}
 small{display:block;color:#64748b;margin-top:18px;font-size:12px;text-align:center}
 </style>
 <main>
@@ -38,6 +45,27 @@ small{display:block;color:#64748b;margin-top:18px;font-size:12px;text-align:cent
   <h1>aTrust 客户端登录</h1>
   <span id="clientBadge" class="badge">检查状态中</span>
 </header>
+<section id="socksInfo" class="proxy-card" hidden aria-live="polite">
+  <div class="proxy-title">连接成功 · SOCKS5 开放端口</div>
+  <div class="proxy-grid">
+    <div class="proxy-item">
+      <span class="proxy-label">SOCKS5 地址</span>
+      <code id="socksAddress" class="proxy-value">127.0.0.1:1080</code>
+    </div>
+    <div class="proxy-item">
+      <span class="proxy-label">开放端口</span>
+      <code id="socksPort" class="proxy-value">1080</code>
+    </div>
+    <div class="proxy-item">
+      <span class="proxy-label">账号密码</span>
+      <span id="socksAuth" class="proxy-meta">无账号密码</span>
+    </div>
+    <div class="proxy-item">
+      <span class="proxy-label">访问限制</span>
+      <span id="socksScope" class="proxy-meta">仅允许本地连接（127.0.0.1）</span>
+    </div>
+  </div>
+</section>
 <div class="tabs" role="tablist">
   <button id="tabPassword" type="button" role="tab" aria-selected="true" class="active">密码登录</button>
   <button id="tabDingTalk" type="button" role="tab" aria-selected="false">钉钉扫码</button>
@@ -85,6 +113,11 @@ small{display:block;color:#64748b;margin-top:18px;font-size:12px;text-align:cent
 </main>
 <script>
 const badge = document.getElementById('clientBadge');
+const socksInfo = document.getElementById('socksInfo');
+const socksAddress = document.getElementById('socksAddress');
+const socksPort = document.getElementById('socksPort');
+const socksAuth = document.getElementById('socksAuth');
+const socksScope = document.getElementById('socksScope');
 const tabPassword = document.getElementById('tabPassword');
 const tabDingTalk = document.getElementById('tabDingTalk');
 const panelPassword = document.getElementById('panelPassword');
@@ -113,7 +146,7 @@ const DEFAULT_PWD_HINT = '点击“获取 / 刷新验证码”从服务器官方
 
 function setBadge(status) {
   badge.textContent = '客户端：' + (status || '未知');
-  badge.className = 'badge' + (status === 'online' ? ' online' : '');
+  badge.className = 'badge' + (['online', 'login'].includes(status) ? ' online' : '');
 }
 
 function setBox(element, text, kind = '') {
@@ -126,7 +159,28 @@ function hideCaptchaStage() {
   captchaImg.removeAttribute('src');
 }
 
-function markServiceClosed(message, kind = 'ok') {
+function showSocksInfo(socks5) {
+  if (!socks5 || !Number.isInteger(socks5.port)) {
+    socksInfo.hidden = true;
+    return;
+  }
+  const host = typeof socks5.host === 'string' && socks5.host ? socks5.host : '127.0.0.1';
+  socksAddress.textContent = host + ':' + socks5.port;
+  socksPort.textContent = String(socks5.port);
+  socksAuth.textContent = '无账号密码';
+  socksScope.textContent = '仅允许本地连接（' + host + '）';
+  socksInfo.hidden = false;
+}
+
+function formatConnectedMessage(prefix, socks5) {
+  if (socks5 && Number.isInteger(socks5.port)) {
+    const host = typeof socks5.host === 'string' && socks5.host ? socks5.host : '127.0.0.1';
+    return prefix + '，SOCKS5 开放端口：' + host + ':' + socks5.port + '（无账号密码，仅允许本地连接），登录网页服务已自动关闭。';
+  }
+  return prefix + '，登录网页服务已自动关闭。';
+}
+
+function markServiceClosed(message, kind = 'ok', socks5 = null) {
   serviceClosed = true;
   if (timer) {
     clearInterval(timer);
@@ -141,6 +195,7 @@ function markServiceClosed(message, kind = 'ok') {
   clearBtn.disabled = true;
   submitPwdBtn.disabled = true;
   refreshQrBtn.disabled = true;
+  showSocksInfo(socks5);
   setBox(pwdStatus, message, kind);
   setBox(qrStatus, message, kind);
 }
@@ -190,7 +245,7 @@ async function pollStatus() {
     if (!response.ok) throw new Error(data.error || '读取状态失败');
     setBadge(data.status);
     if (['online', 'login'].includes(data.status) || data.closing) {
-      markServiceClosed('aTrust 客户端状态：' + data.status + '，已登录，登录网页服务已自动关闭。', 'ok');
+      markServiceClosed(formatConnectedMessage('aTrust 客户端状态：' + data.status + '，已连接', data.socks5), 'ok', data.socks5);
       return;
     }
     if (mode === 'dingtalk') {
@@ -226,7 +281,7 @@ async function fetchCaptcha() {
     }
     if (data.status) setBadge(data.status);
     if (data.closing || ['online', 'login'].includes(data.status)) {
-      markServiceClosed('aTrust 客户端状态：' + data.status + '，已登录，登录网页服务已自动关闭。', 'ok');
+      markServiceClosed(formatConnectedMessage('aTrust 客户端状态：' + data.status + '，已连接', data.socks5), 'ok', data.socks5);
       return;
     }
     if (!response.ok) throw new Error(data.error || '获取验证码失败');
@@ -290,9 +345,10 @@ async function submitPasswordLogin() {
     if (response.ok && data.ok) {
       passwordInput.value = '';
       if (data.closing || ['online', 'login'].includes(data.status)) {
-        markServiceClosed('登录成功，客户端状态：' + (data.status || 'online') + '，登录网页服务已自动关闭。', 'ok');
+        markServiceClosed(formatConnectedMessage('连接成功，客户端状态：' + (data.status || 'online'), data.socks5), 'ok', data.socks5);
       } else {
         setBox(pwdStatus, '密码与验证码校验成功，正在等待官方客户端完成连接…', 'ok');
+        setTimeout(pollStatus, 800);
       }
     } else {
       setBox(pwdStatus, (data.error || '登录失败') + '（验证码已失效，请重新获取）', 'err');
@@ -320,7 +376,7 @@ async function refreshDingTalk() {
     }
     if (data.status) setBadge(data.status);
     if (data.closing || ['online', 'login'].includes(data.status)) {
-      markServiceClosed('aTrust 客户端状态：' + data.status + '，已登录，登录网页服务已自动关闭。', 'ok');
+      markServiceClosed(formatConnectedMessage('aTrust 客户端状态：' + data.status + '，已连接', data.socks5), 'ok', data.socks5);
       return;
     }
     if (!response.ok) throw new Error(data.error || '刷新失败');
